@@ -1,2 +1,2 @@
-# soortenmeetnetten-data
-Export data from meetnetten.be database
+# soortenmeetnetten-queries
+Queries to export data from meetnetten.be database
