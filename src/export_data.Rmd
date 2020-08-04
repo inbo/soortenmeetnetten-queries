@@ -82,8 +82,8 @@ bezoeken <- bezoeken_orig %>%
   group_by(meetnet, protocol, locatie, jaar) %>%
   mutate(i_bezoek = rank(doy)) %>%
   ungroup() %>%
-  select(soortgroep, meetnet, protocol, locatie, jaar, datum, doy, i_bezoek, everything())
-
+  select(soortgroep, meetnet, protocol, locatie, jaar, datum, doy, i_bezoek, everything()) %>%
+  mutate(notes = str_replace_all(notes, "[\r\n]" , " "))
 
 ```
 
@@ -322,7 +322,8 @@ Order by PG.name
 taken <- set_utf8(dbGetQuery(con, query_taken))
 taken <- taken %>%
   filter(str_sub(meetnet, 1, 8) != "Algemene") %>%
-  filter(!is.na(taak))
+  filter(!is.na(taak)) %>%
+  mutate(jaar= as.numeric((format(taak_start, "%Y"))))
 
 ```
 
