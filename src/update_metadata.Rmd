@@ -4,6 +4,84 @@ output: html_document
 ---
 
 ```{r}
-metadata_file <- read.csv2()
+library(tidyverse)
+library(sf)
+library(git2rdata)
+```
+
+## Read file with monitoring scheme characteristics that are not available in meetnetten.be
+
+```{r}
+metadata_file <- read.csv2("../metadata/meetnetkarakt.csv", stringsAsFactors  = FALSE)
+
+```
+
+## Derive characteristics from meetnetten.be data
+
+```{r}
+
+locaties <- st_read("../raw/meetnetten_locaties.gpkg",
+                    "locaties", quiet = TRUE)
+
+bezoeken <- read_vc(file = "bezoeken", root = "../raw")
+taken <- read_vc(file = "taken", root = "../raw")
+werkpakketten <- read_vc(file = "werkpakketten", root = "../raw")
+
+# karakteristieken locaties
+locaties_metadata <- locaties %>%
+  st_drop_geometry() %>%
+  filter(locatie_type == "locatie") %>%
+  distinct(meetnet, locatie, is_active, is_sample) %>%
+  mutate(is_sample_history = is_sample | (!is_active)) #huidige en historische meetnetlocaties
+
+# aantal locaties per meetnet
+meetnetten_n_locaties <- locaties %>%
+  st_drop_geometry() %>%
+  filter(locatie_type == "locatie") %>%
+  filter(is_active) %>%
+  group_by( meetnet, is_sample) %>%
+  summarise(n_locaties = n()) %>%
+  ungroup()
+
+# telperiodes
+telperiodes_taak <- taken %>%
+  filter(jaar == 2020) %>%
+  select(soortgroep, meetnet, protocol, jaar, taak, taak_start, taak_end) %>%
+  unique()
+
+telperiodes_taak <- telperiodes_taak %>%
+  group_by(soortgroep, meetnet, protocol) %>%
+  summarise(start_telperiode = min(taak_start),
+            einde_telperiode = max(taak_end)) %>%
+  ungroup()
+
+temp <- bezoeken %>%
+  filter(jaar == 2019) %>%
+  distinct(soortgroep, meetnet, protocol)
+
+telperiodes_wp <- werkpakketten %>%
+  filter(jaar == 2020) %>%
+  filter(! meetnet %in% telperiodes$meetnet) %>%
+  select(meetnet, start_telperiode = wp_start, einde_telperiode = wp_end) %>%
+  inner_join(temp, by = "meetnet")
+
+telperiodes <- telperiodes_taak %>%
+  bind_rows(telperiodes_wp)
+
+```
+
+## Combine metadata
+
+```{r}
+metadata <- metadata_file %>%
+  select(-begin_telperiode, - einde_telperiode) %>%
+  left_join(telperiodes, by = c("soortgroep", "meetnet", "protocol")) %>%
+  left_join(meetnetten_n_locaties, by = "meetnet")
+```
+
+## Write 
+
+```{r}
+write_vc(metadata, "meetnetkarakteristieken", "../metadata", sorting = c("soortgroep", "meetnet", "protocol", "is_sample"), strict = FALSE)
 ```
 
