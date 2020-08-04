@@ -1,0 +1,39 @@
+..generic:
+  git2rdata: 0.2.0
+  optimize: yes
+  NA string: NA
+  sorting:
+  - soortgroep
+  - meetnet
+  - protocol
+  - is_sample
+  hash: 1dbf795acb1acf8dac679f5d1e80d30006354104
+  data_hash: 44e6486584d1fa351a9fb3c9ec0a594156ea1a8c
+soortgroep:
+  class: character
+meetnet:
+  class: character
+protocol:
+  class: character
+type:
+  class: character
+duur_meetcyclus:
+  class: integer
+generatie:
+  class: character
+bezoeken:
+  class: integer
+opstartjaar:
+  class: integer
+type_soort:
+  class: character
+start_telperiode:
+  class: Date
+  origin: '1970-01-01'
+einde_telperiode:
+  class: Date
+  origin: '1970-01-01'
+is_sample:
+  class: logical
+n_locaties:
+  class: integer
