@@ -422,7 +422,14 @@ Order by PG.name
     , L.name
     , V.start_date"
 
-tellers <- set_utf8(dbGetQuery(con, query_tellers))
+tellers_orig <- set_utf8(dbGetQuery(con, query_tellers))
+
+tellers <- tellers_orig %>%
+  mutate(jaar = as.numeric(format(datum, "%Y")),
+         doy = as.numeric(format(datum, "%j"))) %>%
+  gather(hoofdteller, medeteller, key = "type_teller", value = "naam_teller") %>%
+  filter(naam_teller != "")
+  
 ```
 
 ### Covariabelen
