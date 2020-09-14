@@ -396,7 +396,6 @@ query_tellers <- "Select PG.name as Soortgroep
     , V.analysis as voor_analyse
     , V.end_date
     , V.end_time
-    , V.notes
     , L.name as locatie
     , PR.i18n->>'name_nl' as Protocol
     , case when V.status = 1 then 'Conform protocol'
