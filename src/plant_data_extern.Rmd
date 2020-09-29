@@ -350,4 +350,13 @@ plantendata <- bind_rows(data_extern,
   arrange(meetnet, locatie, datum)
 ```
 
-# 
+# Wegschrijven
+
+```{r}
+plantendata %>%
+  write_vc(file = "data_plantenmeetnetten", root = "../processed")
+
+plantendata %>% 
+  write.csv2("../processed/data_plantenmeetnetten.csv", row.names = FALSE, na = "")
+```
+
