@@ -1,5 +1,5 @@
 ..generic:
-  git2rdata: 0.2.0
+  git2rdata: 0.2.1
   optimize: yes
   NA string: NA
   sorting:
@@ -8,7 +8,7 @@
   - protocol
   - is_sample
   hash: 1dbf795acb1acf8dac679f5d1e80d30006354104
-  data_hash: 44e6486584d1fa351a9fb3c9ec0a594156ea1a8c
+  data_hash: 99addbe5ec60cadd52f0bc9290fd24a3bcd9490a
 soortgroep:
   class: character
 meetnet:
