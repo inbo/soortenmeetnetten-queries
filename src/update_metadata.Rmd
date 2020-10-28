@@ -61,7 +61,7 @@ temp <- bezoeken %>%
 
 telperiodes_wp <- werkpakketten %>%
   filter(jaar == 2020) %>%
-  filter(! meetnet %in% telperiodes$meetnet) %>%
+  filter(! meetnet %in% telperiodes_taak$meetnet) %>%
   select(meetnet, start_telperiode = wp_start, einde_telperiode = wp_end) %>%
   inner_join(temp, by = "meetnet")
 
