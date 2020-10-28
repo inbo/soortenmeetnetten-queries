@@ -313,6 +313,9 @@ data_extern_bezoeken <- bind_rows(data_extern_locaties_bezoeken,
 ```
 
 
+
+
+
 # Aantallen meetnetten
 
 ```{r data mn}
@@ -332,6 +335,14 @@ aantallen_planten_track <- st_read("../raw/planten_tracks.gpkg", "planten_tracks
   mutate(brondatabank  = "meetnetten",
          floroncode_ingevoerd = "ja")
 
+```
+
+```{r}
+check <- bezoeken_planten_actief %>%
+  left_join(data_extern_locaties2, by = c("meetnet", "locatie", "datum")) %>%
+  filter(is.na(uitvoerder)) %>%
+  anti_join(aantallen_planten_visit_id, by = "visit_id") %>%
+  distinct(meetnet, locatie, datum, visit_id)
 ```
 
 # Samenvoegen
