@@ -349,12 +349,14 @@ inner join accounts_user u on u.id = pl.user_id
 "
 locatie_users <- set_utf8(dbGetQuery(con, query_locatie_users))
 
+
 query_users <- "
 select pg.name as soortgroep
   , p.name as meetnet
   , u.first_name
   , u.last_name
   , u.email
+  , u.address as adres
   , u.city as gemeente
   , u.postalcode as postcode
   , pu.role
@@ -527,7 +529,7 @@ write_vc(taken, "taken", root = "../raw", sorting = c("soortgroep", "meetnet", "
 write_vc(tellers, "tellers", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id"), strict = FALSE)
 write_vc(covariabelen, "covariabele", root = "../raw", sorting = c("meetnet","visit_id"))
 write_vc(locatie_opm, "locatie_opm", root = "../raw", sorting = c("meetnet", "locatie"))
-write_vc(meetnetten_users, "meetnetten_users", root = "../raw", sorting = c("meetnet", "last_name"))
+write_vc(meetnetten_users, "meetnetten_users", root = "../raw", sorting = c("meetnet", "last_name"), strict = FALSE)
 write_vc(locatie_users, "locatie_users", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
 write_vc(locatie_users_reserve, "locatie_users_reserve", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
 st_write(locaties, "../raw/meetnetten_locaties.gpkg", layer = "locaties", driver = "GPKG", delete_layer = TRUE)
