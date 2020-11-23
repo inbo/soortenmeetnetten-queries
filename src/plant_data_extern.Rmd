@@ -304,6 +304,9 @@ data_extern_zonder_bezoeken <- data_extern_locaties2 %>%
   anti_join(data_extern_locaties_inactief_bezoeken, by = "id") %>%
   mutate(type_bezoek = "geen bezoek ingevoerd")
 
+bezoeken_zonder_data <- bezoeken_planten %>%
+  
+
 data_extern_bezoeken <- bind_rows(data_extern_locaties_bezoeken,
                                   data_extern_locaties_inactief_bezoeken,
                                   data_extern_zonder_bezoeken) %>%
@@ -325,6 +328,11 @@ aantallen_planten_visit_id <- read_vc("aantallen_planten", "../raw") %>%
   select(sample_id, visit_id) %>%
   unique()
 
+aantallen_planten_gebied <-  read_vc("aantallen_planten", "../raw") %>%
+  filter(track == 0) %>%
+  select(sample_id, visit_id, schaal, code) %>%
+  unique()
+
 aantallen_planten_track <- st_read("../raw/planten_tracks.gpkg", "planten_tracks") %>%
   st_transform(crs = 31370) %>%
   mutate(x = (st_coordinates(geom))[,1],
@@ -338,11 +346,17 @@ aantallen_planten_track <- st_read("../raw/planten_tracks.gpkg", "planten_tracks
 ```
 
 ```{r}
-check <- bezoeken_planten_actief %>%
+bezoeken_zonder_data <- bezoeken_planten %>%
+  filter(is_active) %>%
   left_join(data_extern_locaties2, by = c("meetnet", "locatie", "datum")) %>%
   filter(is.na(uitvoerder)) %>%
   anti_join(aantallen_planten_visit_id, by = "visit_id") %>%
-  distinct(meetnet, locatie, datum, visit_id)
+  distinct(meetnet, locatie, datum, visit_id, hoofdteller) %>%
+  left_join(aantallen_planten_gebied, by = "visit_id") %>%
+  filter(datum < "2020-01-01") %>%
+  filter(!is.na(code))
+
+write.csv2(bezoeken_zonder_data, "../processed/bezoeken_zonder_puntlocaties.csv", row.names = FALSE, na = "")
 ```
 
 # Samenvoegen
@@ -353,8 +367,9 @@ data_meetnetten <- aantallen_planten_track %>%
 
 data_extern <- data_extern_bezoeken %>%
   mutate(schaal = ifelse(meetvariabele == "Aantal", "aantal (Floron)", 
-                         ifelse(meetvariabele == "Oppervlakte", "oppervlakte (Floron)", NA))) %>%
-  select(brondatabank, meetnet, locatie, afstand_tot_locatie = dist, locatie_inactief, afstand_tot_locatie_inactief = dist_inactief, datum, x = x_coord, y = y_coord, schaal, code = floroncode, floroncode_ingevoerd, bezoek_status, teller_meetnetten = hoofdteller, teller_waarnemingen = waarnemer, visit_id, type_bezoek)
+                         ifelse(meetvariabele == "Oppervlakte", "oppervlakte (Floron)", NA)),
+         wnm_id = ifelse(brondatabank == "waarnemingen.be", id, NA)) %>%
+  select(wnm_id, brondatabank, meetnet, locatie, afstand_tot_locatie = dist, locatie_inactief, afstand_tot_locatie_inactief = dist_inactief, datum, x = x_coord, y = y_coord, schaal, code = floroncode, floroncode_ingevoerd, bezoek_status, teller_meetnetten = hoofdteller, teller_waarnemingen = waarnemer, visit_id, type_bezoek)
 
 plantendata <- bind_rows(data_extern,
                          data_meetnetten) %>%
@@ -365,9 +380,9 @@ plantendata <- bind_rows(data_extern,
 
 ```{r}
 plantendata %>%
-  write_vc(file = "data_plantenmeetnetten", root = "../processed")
+  write_vc(file = "data_plantenmeetnetten", root = "../processed", strict = FALSE)
 
 plantendata %>% 
-  write.csv2("../processed/data_plantenmeetnetten.csv", row.names = FALSE, na = "")
+  write.csv2("../processed/data_plantenmeetnetten_versie2020-11-23.csv", row.names = FALSE, na = "")
 ```
 
