@@ -1,0 +1,134 @@
+---
+title: "Externe data meetnetten"
+output: html_document
+---
+
+```{r}
+library(leaflet)
+library(sf)
+library(git2rdata)
+library(tidyverse)
+```
+
+# Hamsterburchten
+
+```{r}
+burchten2016_sf <- read_sf("../data_extern/hamster", "Hamster_gevonden_burchten_2016_Lambert72_EPSG31370")
+
+burchten2016 <- burchten2016_sf %>%
+  mutate(datum = as.Date(OPMERKING, format = "%Y-%m-%d"),
+         aantal = 1,
+         x = st_coordinates(geometry)[, 1],
+         y = st_coordinates(geometry)[, 2],
+         opmerking = str_c("aantal pijpen = ", AANTALPIJP),
+         soort_wet = "Cricetus cricetus",
+         soort_nl = "Europese Hamster") %>%
+  st_drop_geometry() %>%
+    select(soort_wet, soort_nl, datum, aantal,  opmerking, x, y)
+
+burchten2017_sf <- read_sf("../data_extern/hamster", "Hamsterburchten_2017_v29092017_Lambert72")
+
+burchten2017 <- burchten2017_sf %>%
+  rename(id_wnm = ID, soort_wet = Wetenschap, soort_nl = Naam, aantal = Aantal, opmerking = Toelichtin, hoofdteller = Waarnemer) %>%
+  mutate(datum = as.Date(Datum, format = "%d/%m/%Y"),
+         x = st_coordinates(geometry)[, 1],
+         y = st_coordinates(geometry)[, 2]) %>%
+  st_drop_geometry() %>%
+  select(id_wnm, soort_wet, soort_nl, datum, aantal, hoofdteller, opmerking, x, y)
+
+burchten2018_sf <- read_sf("../data_extern/hamster", "Hamsterburchten_2018_Meetnet-waarnemingen-ontdubbeld_Lambert72_31370_v2018-12-12")
+
+burchten2018 <- burchten2018_sf %>%
+  rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh, hoofdteller = wnr) %>%
+  mutate(datum = as.Date(datum, format = "%Y-%m-%d"),
+         opmerking = ifelse(!is.na(opmerking), 
+                            str_c(opmerking, "; zeker = ", zeker),
+                            str_c("zeker = ", zeker)),
+         x = st_coordinates(geometry)[, 1],
+         y = st_coordinates(geometry)[, 2]) %>%
+  st_drop_geometry() %>%
+  select(id_wnm, soort_wet, soort_nl, datum, aantal, hoofdteller, opmerking, x, y)
+
+burchten2019_sf <- st_read("../data_extern/hamster", "Hamsterburchten_2019_Meetner-waarnemingen_v14012020_Lambert72")
+
+burchten2019 <- burchten2019_sf %>%
+  rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh, hoofdteller = wnr) %>%
+  mutate(datum = as.Date(datum, format = "%d-%m-%Y"),
+         x = st_coordinates(geometry)[, 1],
+         y = st_coordinates(geometry)[, 2]) %>%
+  st_drop_geometry() %>%
+  select(id_wnm, soort_wet, soort_nl, datum, aantal, hoofdteller, opmerking, x, y)
+
+
+burchten_all <- bind_rows(burchten2016,
+                          burchten2017,
+                          burchten2018,
+                          burchten2019) %>%
+  mutate(meetnet = "Hamster",
+         protocol = "Hamster - Burcht",
+         locatie = "Widooie")
+ 
+burchten_all_sf <- burchten_all %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370)                         
+```
+
+
+```{r}
+locaties_hamster <- read_sf("../raw/meetnetten_locaties.gpkg", "locaties") %>%
+  filter(meetnet == "Hamster") %>%
+  select(locatie)
+
+```
+
+```{r}
+burchten_all_sf %>%
+  st_transform(crs = 4326) %>%
+  leaflet() %>%
+  addTiles() %>%
+  addCircleMarkers() %>%
+  addPolygons(data = locaties_hamster)
+```
+
+
+# Das
+
+```{r}
+das_orig <- read.csv2("../data_extern/das/meetnet_das_2016_2018.csv")
+
+das <- das_orig %>%
+  mutate(meetnet = "Das",
+         protocol = "Das - Burcht",
+         soort_nl = "Das",
+         soort_wet = "Meles meles", 
+         locatie = str_c("burcht_", burchtID),
+         datum = as.Date(str_c("01-01-", Jaar), format = "%d-%m-%Y"),
+         aantal = ifelse(status == "Verdwenen", 0, 1)
+         ) %>%
+  select(meetnet, protocol, locatie, datum, soort_nl, soort_wet, aantal, status, bewoning, opmerking = Gebied) %>%
+  gather(status, bewoning, key = "covariabele", value = "waarde")
+  
+
+```
+
+
+# Samenvoegen
+
+```{r}
+data_extern <- burchten_all %>%
+  bind_rows(das)
+
+visit_ids <- data_extern %>%
+  distinct(meetnet, locatie, datum) %>%
+  mutate(visit_id = str_c("extern_", 1:n_distinct(meetnet, locatie, datum)))
+
+data_extern_burchten <- data_extern %>%
+  left_join(visit_ids, by = c("meetnet", "locatie", "datum")) %>%
+  select(meetnet, protocol, locatie, visit_id, datum, everything())
+```
+
+# Export
+
+```{r}
+write_vc(data_extern_burchten, "data_burchten", "../processed")
+```
+
