@@ -1,0 +1,19 @@
+---
+title: "Update jaardoelen"
+output: html_document
+---
+
+```{r}
+library(git2rdata)
+library(tidyverse)
+```
+
+
+```{r}
+jaardoelen <- read.csv2("../metadata/jaardoelen_2020.csv", stringsAsFactors = FALSE)
+```
+
+```{r}
+write_vc(jaardoelen, root =  "../metadata", file = "monitoring_targets", sorting = c("meetnet", "jaar"))
+```
+

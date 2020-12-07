@@ -1,0 +1,21 @@
+..generic:
+  git2rdata: 0.2.1
+  optimize: yes
+  NA string: NA
+  sorting:
+  - meetnet
+  - jaar
+  hash: a567e092cc000ebb896a6fd32fd2f37bd9a29b5c
+  data_hash: f0dd1b882570188093a27ef029f4aff3b3e2f92d
+meetnet:
+  class: character
+meetfrequentie_doel:
+  class: integer
+jaar:
+  class: integer
+jaardoel:
+  class: integer
+eenheid:
+  class: character
+cyclusdoel:
+  class: integer
