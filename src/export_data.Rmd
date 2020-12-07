@@ -254,7 +254,7 @@ aantallen_planten <- aantallen_planten %>%
   mutate(puntlocatie = ifelse(is.na(geom_text), 0, 1))
 
 aantallen_planten_puntlocaties <- aantallen_planten %>%
-  filter(track == 1) %>%
+  filter(puntlocatie == 1) %>%
   select(meetnet, protocol, locatie, datum,  soort_w = soort_wet, sample_id, schaal, code, beschrijving_floroncode, opm)
 
 aantallen_planten <- aantallen_planten %>%
@@ -274,7 +274,7 @@ Daarnaast kunnen er echter ook individueel afgekeurde observaties zijn in een vo
 Om dit te vereenvoudigen werd een extra veld 'bruikbaar' toegevoegd waar rechtstreeks op gefilterd kan worden
 
 ```{r}
-query_aantallen_planten <- "SELECT p.name AS meetnet
+query_aantallen_planten2 <- "SELECT p.name AS meetnet
 	, v.id AS visit_id
 	, s.id AS sample_id
 	, pr.name AS protocol
@@ -336,7 +336,7 @@ WHERE 1 = 1
 	AND p.group_id = 5 --planten
 --LIMIT 100
 " 
-
+aantallen_planten2 <- set_utf8(dbGetQuery(con, query_aantallen_planten2)) 
 
 ```
 
@@ -616,5 +616,6 @@ st_write(locaties, "../raw/meetnetten_locaties.gpkg", layer = "locaties", driver
 st_write(sublocations_transecten, "../raw/meetnetten_locaties.gpkg", layer = "transecten", driver = "GPKG", delete_layer = TRUE)
 st_write(aantallen_planten_puntlocaties, "../raw/planten_puntlocaties.gpkg", layer = "planten_puntlocaties", driver = "GPKG", delete_layer = TRUE)
 st_write(aantallen_planten_puntlocaties,  "../raw/planten_puntlocaties", layer = "planten_puntlocaties", driver = "ESRI Shapefile", delete_layer = TRUE)
+write_vc(aantallen_planten2, "aantallen_planten_FP", root = "../raw", sorting = c("meetnet", "locatie", "visit_id", "sample_id"), strict = FALSE)
 ```
 
