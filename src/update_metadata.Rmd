@@ -56,7 +56,7 @@ telperiodes_taak <- telperiodes_taak %>%
   ungroup()
 
 temp <- bezoeken %>%
-  filter(jaar == 2019) %>%
+  filter(jaar >= 2018) %>%
   distinct(soortgroep, meetnet, protocol)
 
 telperiodes_wp <- werkpakketten %>%
@@ -66,7 +66,8 @@ telperiodes_wp <- werkpakketten %>%
   inner_join(temp, by = "meetnet")
 
 telperiodes <- telperiodes_taak %>%
-  bind_rows(telperiodes_wp)
+  bind_rows(telperiodes_wp) %>%
+  arrange(meetnet, protocol)
 
 ```
 
