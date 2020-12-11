@@ -67,7 +67,8 @@ telperiodes_wp <- werkpakketten %>%
 
 telperiodes <- telperiodes_taak %>%
   bind_rows(telperiodes_wp) %>%
-  arrange(meetnet, protocol)
+  arrange(meetnet, protocol) %>%
+  mutate(protocol = ifelse(meetnet == "Grote weerschijnvlinder", "Vlinders - Gebiedstelling", protocol))
 
 ```
 
