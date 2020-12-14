@@ -44,6 +44,7 @@ query_bezoeken <- "Select PG.name as soortgroep
     , V.start_time
     , V.end_date
     , V.task_id
+    , v.validation_status as validatie
     , T.name as taak
     , case when V.legacy_status = 1 then 'Conform protocol'
            when V.legacy_status = -1 then 'Niet volledig conform protocol'
