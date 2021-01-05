@@ -111,7 +111,83 @@ das <- das_orig %>%
 ```
 
 
-# Samenvoegen
+# Gerande oeverspin
+
+```{r}
+
+data_oeverspinnen_2019 <- read.csv2("../data_extern/count_data/gerande_oeverspin/oeverspinnen.csv", stringsAsFactors = FALSE) %>%
+  filter(lon != "onbekend") %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d"))
+
+data_oeverspinnen_2018 <- read.csv2("../data_extern/count_data/gerande_oeverspin/Dolomedes_SamenvattendeTabel_2018.csv", stringsAsFactors = FALSE) %>%
+    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+    mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d/%m/%Y"))
+
+data_oeverspinnen_tot2017 <- read_sf("../data_extern/count_data/gerande_oeverspin","Dolomedes_exportWnBe_23.03.2017_InternGebruik_Lambert1972") %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d")) %>%
+  st_drop_geometry()
+
+data_oeverspinnen_2020 <- read.csv2("../data_extern/count_data/gerande_oeverspin/GerandeOeverspin_wbe_2020.csv") %>%
+    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+    mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d/%m/%Y"))
+
+data_oeverspinnen <- bind_rows(data_oeverspinnen_tot2017,
+                           data_oeverspinnen_2018,
+                           data_oeverspinnen_2019,
+                           data_oeverspinnen_2020) %>%
+  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld")) %>%
+  filter(!is.na(x))
+
+pot_leefgebied <- read_sf(dsn = "../data_extern/sampleframe/GerandeOeverspin_Lambert1972_versie2017-03-31", "GerandeOeverspin_Lambert1972_versie2017-03-31") %>%
+  select(locatie = Naam)
+
+data_oeverspinnen_sf <- data_oeverspinnen %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370) %>%
+  st_join(pot_leefgebied, join = st_nearest_feature) %>%
+  group_by(id) %>%
+  mutate(dist = min(st_distance(geometry, pot_leefgebied))) %>%
+  ungroup()
+
+data_oeverspinnen <- data_oeverspinnen_sf %>%
+  st_drop_geometry() %>%
+  mutate(x = st_coordinates(data_oeverspinnen_sf)[, 1],
+         y = st_coordinates(data_oeverspinnen_sf)[, 2],
+         dist_to_pot_leefgebied = round(drop_units(dist), 0),
+         locatie = ifelse(dist_to_pot_leefgebied > 250, NA, locatie)) %>%
+  select(-dist) %>%
+  mutate(jaar = as.numeric(format(datum, "%Y")),
+         meetnet = "Gerande oeverspin") %>% 
+  select(meetnet, jaar, locatie, gebied, datum, id, everything())
+  
+
+
+# locaties_prioritair <- read_vc(root = "../raw",file =  "werkpakketten_locaties") %>%
+#   filter(meetnet == "Gerande oeverspin",
+#          werkpakket == "veldwerk 2020")
+# 
+# pot_leefgebied_prioritair <- read_sf("../raw/meetnetten_locaties.gpkg", "locaties") %>%
+#   filter(meetnet == "Gerande oeverspin") %>%
+#   filter(locatie %in% locaties_prioritair$locatie) %>%
+#   st_transform(crs = 31370) %>%
+#   select(locatie_prioritair = locatie)
+# 
+# oeverspin_2020_sf <- oeverspin_2020_orig %>%
+#   filter(naam_nl == "Gerande oeverspin") %>%
+#   st_as_sf(coords = c("x", "y"), crs = 31370) %>%
+#   st_join(pot_leefgebied_prioritair) %>%
+#   st_join(pot_leefgebied) 
+
+
+```
+
+
+# Samenvoegen burchten
 
 ```{r}
 data_extern <- burchten_all %>%
@@ -130,5 +206,6 @@ data_extern_burchten <- data_extern %>%
 
 ```{r}
 write_vc(data_extern_burchten, "data_burchten", "../processed")
+write_vc(data_oeverspinnen, "data_oeverspinnen", "../processed", strict = FALSE)
 ```
 
