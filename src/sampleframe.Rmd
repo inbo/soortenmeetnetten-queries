@@ -1,0 +1,30 @@
+---
+title: "Steekproefkader"
+output: html_document
+---
+
+```{r}
+library(sf)
+library(tidyverse)
+```
+
+# Kamsalamander
+
+```{r}
+steekproefkader_kamsalamander <- read_sf("../data_extern/sampleframe/Kamsalamander_steekproefkader_Lambert72_versie2019-03-07", "Kamsalamander_steekproefkader_Lambert72_versie2019-03-07")
+
+steekproefkader_details <- steekproefkader_kamsalamander %>%
+  mutate(meetnet = "Kamsalamander") %>%
+  select(meetnet, locatie = Naam, gebied_code = GebiedCode, stratum = Stratum, steekproef_punt = Steekproef, grts_gebied = GRTS_geb, volgorde_gebied = Vlg_geb, grts_punt = GRTS_punt, volgorde_punt = Vlg_punt, n_steekproef_gebied = nStkpr_geb) %>%
+  mutate(locatie = str_to_lower(locatie)) %>%
+  group_by(gebied_code) %>%
+  mutate(steekproef_gebied = sum(steekproef_punt) > 0) %>%
+  ungroup() %>%
+  mutate(locatie = ifelse(locatie == "de brand - poel n31" & steekproef_punt == 0, "de brand - poel n31bis", locatie),
+         locatie = ifelse(locatie == "antitankgracht haacht - poel 16c" & steekproef_punt == 0, "antitankgracht haacht - poel 16cbis", locatie))
+  
+st_write(steekproefkader_details,
+         "../raw/steekproefkader_locaties.gpkg",
+         "kamsalamander")
+```
+
