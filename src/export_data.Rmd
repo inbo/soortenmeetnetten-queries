@@ -54,8 +54,8 @@ query_bezoeken <- "Select PG.name as soortgroep
     , case when V.status = 1 then 'Conform protocol'
            when V.status = -1 then 'Weersomstandigheden ongunstig'
            when V.status = -2 then 'Telmethode niet gevolgd'
-           when V.status = -3 then 'Geen veldwerk mogelijk - locatie ongeschikt'
-           when V.status = -4 then 'Geen veldwerk mogelijk - locatie ontoegankelijk'
+           when V.status = -3 then 'Geen veldwerk mogelijk - locatie ontoegankelijk'
+           when V.status = -4 then 'Geen veldwerk mogelijk - locatie ongeschikt'
            else Null
       end as bezoek_status
     , V.id as visit_id
@@ -640,6 +640,7 @@ write_vc(aantallen, "aantallen", root = "../raw", sorting = c("soortgroep", "mee
 write_vc(aantallen_planten, "aantallen_planten", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id"), strict = FALSE)
 write_vc(bezoeken, "bezoeken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id"), strict = FALSE)
 write_vc(werkpakketten, "werkpakketten", root = "../raw", sorting = c("meetnet", "werkpakket"), strict = FALSE)
+write_vc(werkpakketten_locaties, "werkpakketten_locaties", root = "../raw", sorting = c("meetnet", "werkpakket", "locatie"), strict = FALSE)
 write_vc(taken, "taken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "werkpakket"), strict = FALSE)
 write_vc(tellers, "tellers", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id"), strict = FALSE)
 write_vc(covariabelen, "covariabele", root = "../raw", sorting = c("meetnet","visit_id"))
@@ -654,5 +655,8 @@ st_write(tracks_planten, "../raw/planten_puntlocaties.gpkg", layer = "tracks", d
 st_write(aantallen_planten_puntlocaties,  "../raw/planten_puntlocaties", layer = "planten_puntlocaties", driver = "ESRI Shapefile", delete_layer = TRUE)
 st_write(aantallen_planten_puntlocaties,  "../raw/planten_tracks", layer = "planten_tracks", driver = "ESRI Shapefile", delete_layer = TRUE)
 write_vc(aantallen_planten2, "aantallen_planten_FP", root = "../raw", sorting = c("meetnet", "locatie", "visit_id", "sample_id"), strict = FALSE)
+
+version <- data.frame(date_export = Sys.Date())
+write_vc(version, "date_export", root = "../raw")
 ```
 
