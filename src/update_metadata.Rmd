@@ -12,7 +12,7 @@ library(git2rdata)
 ## Read file with monitoring scheme characteristics that are not available in meetnetten.be
 
 ```{r}
-metadata_file <- read.csv2("../metadata/meetnetkarakt.csv", stringsAsFactors  = FALSE)
+metadata_file <- read.csv2("../data_extern/meetnetkarakteristieken/meetnetkarakt.csv", stringsAsFactors  = FALSE)
 
 ```
 

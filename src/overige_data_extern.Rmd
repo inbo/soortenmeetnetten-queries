@@ -8,12 +8,15 @@ library(leaflet)
 library(sf)
 library(git2rdata)
 library(tidyverse)
+library(units)
 ```
 
 # Hamsterburchten
 
+## Gevonden burchten
+
 ```{r}
-burchten2016_sf <- read_sf("../data_extern/hamster", "Hamster_gevonden_burchten_2016_Lambert72_EPSG31370")
+burchten2016_sf <- read_sf("../data_extern/count_data/hamster", "Hamster_gevonden_burchten_2016_Lambert72_EPSG31370")
 
 burchten2016 <- burchten2016_sf %>%
   mutate(datum = as.Date(OPMERKING, format = "%Y-%m-%d"),
@@ -26,30 +29,34 @@ burchten2016 <- burchten2016_sf %>%
   st_drop_geometry() %>%
     select(soort_wet, soort_nl, datum, aantal,  opmerking, x, y)
 
-burchten2017_sf <- read_sf("../data_extern/hamster", "Hamsterburchten_2017_v29092017_Lambert72")
+burchten2017_sf <- read_sf("../data_extern/count_data/hamster", "Hamsterburchten_2017_v29092017_Lambert72")
 
 burchten2017 <- burchten2017_sf %>%
-  rename(id_wnm = ID, soort_wet = Wetenschap, soort_nl = Naam, aantal = Aantal, opmerking = Toelichtin, hoofdteller = Waarnemer) %>%
+  rename(id_wnm = ID, soort_wet = Wetenschap, soort_nl = Naam, aantal = Aantal, opmerking = Toelichtin, hoofdteller = Waarnemer, zeker = Zeker) %>%
   mutate(datum = as.Date(Datum, format = "%d/%m/%Y"),
          x = st_coordinates(geometry)[, 1],
-         y = st_coordinates(geometry)[, 2]) %>%
+         y = st_coordinates(geometry)[, 2],
+         zeker = ifelse(zeker == "Y", "ja",
+                        ifelse(zeker == "N", "nee", NA))) %>%
   st_drop_geometry() %>%
-  select(id_wnm, soort_wet, soort_nl, datum, aantal, hoofdteller, opmerking, x, y)
+  select(id_wnm, soort_wet, soort_nl, datum, aantal, zeker, hoofdteller, opmerking, x, y)
 
-burchten2018_sf <- read_sf("../data_extern/hamster", "Hamsterburchten_2018_Meetnet-waarnemingen-ontdubbeld_Lambert72_31370_v2018-12-12")
+burchten2018_sf <- read_sf("../data_extern/count_data/hamster", "Hamsterburchten_2018_Meetnet-waarnemingen-ontdubbeld_Lambert72_31370_v2018-12-12")
 
 burchten2018 <- burchten2018_sf %>%
   rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh, hoofdteller = wnr) %>%
   mutate(datum = as.Date(datum, format = "%Y-%m-%d"),
-         opmerking = ifelse(!is.na(opmerking), 
-                            str_c(opmerking, "; zeker = ", zeker),
-                            str_c("zeker = ", zeker)),
+         zeker = ifelse(zeker == "J", "ja",
+              ifelse(zeker == "N", "nee", NA)),
+         # opmerking = ifelse(!is.na(opmerking), 
+         #                    str_c(opmerking, "; zeker = ", zeker),
+         #                    str_c("zeker = ", zeker)),
          x = st_coordinates(geometry)[, 1],
          y = st_coordinates(geometry)[, 2]) %>%
   st_drop_geometry() %>%
-  select(id_wnm, soort_wet, soort_nl, datum, aantal, hoofdteller, opmerking, x, y)
+  select(id_wnm, soort_wet, soort_nl, datum, aantal, zeker, hoofdteller, opmerking, x, y)
 
-burchten2019_sf <- st_read("../data_extern/hamster", "Hamsterburchten_2019_Meetner-waarnemingen_v14012020_Lambert72")
+burchten2019_sf <- st_read("../data_extern/count_data/hamster", "Hamsterburchten_2019_Meetner-waarnemingen_v14012020_Lambert72")
 
 burchten2019 <- burchten2019_sf %>%
   rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh, hoofdteller = wnr) %>%
@@ -59,11 +66,24 @@ burchten2019 <- burchten2019_sf %>%
   st_drop_geometry() %>%
   select(id_wnm, soort_wet, soort_nl, datum, aantal, hoofdteller, opmerking, x, y)
 
+burchten2020_sf <- st_read("../data_extern/count_data/hamster", "Hamsterburchten_2020_meetnet_waarnemingen_Lambert72_ontdubbeld")
+
+burchten2020 <- burchten2020_sf %>%
+  rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh, hoofdteller = wnr, zeker = Zeker) %>%
+  mutate(datum = as.Date(datum, format = "%d-%m-%Y"),
+         zeker = ifelse(zeker == 1, "ja",
+              ifelse(zeker == 0, "nee", NA)),
+         x = st_coordinates(geometry)[, 1],
+         y = st_coordinates(geometry)[, 2]) %>%
+  st_drop_geometry() %>%
+  select(id_wnm, soort_wet, soort_nl, datum, aantal, zeker, hoofdteller, opmerking, x, y)
+
 
 burchten_all <- bind_rows(burchten2016,
                           burchten2017,
                           burchten2018,
-                          burchten2019) %>%
+                          burchten2019,
+                          burchten2020) %>%
   mutate(meetnet = "Hamster",
          protocol = "Hamster - Burcht",
          locatie = "Widooie")
@@ -71,6 +91,28 @@ burchten_all <- bind_rows(burchten2016,
 burchten_all_sf <- burchten_all %>%
   st_as_sf(coords = c("x", "y"), crs = 31370)                         
 ```
+
+## Onderzochte percelen
+
+```{r}
+percelen_2020_sf_orig <- read_sf("../data_extern/count_data/hamster", "Hamster_percelen_onderzocht_2020_v05012020_Lambert72")
+
+percelen_2020_sf <- percelen_2020_sf_orig %>%
+  rename(id_perceel = id, aantal_tellers = X.Tellers, opmerking = Bruchten, gewas = Gewas, oppervlakte_ha = opp..ha.) %>%
+  mutate(meetnet = "Hamster",
+         datum = as.Date(VisitDate, format = "%d/%m/%Y"),
+         type_telling = ifelse(datum > as.Date("2020-06-01"), "zomer", "winter")) %>%
+  select(meetnet, id_perceel, datum, type_telling, aantal_tellers, gewas, oppervlakte_ha, opmerking)
+
+oppervlakte_onderzocht <- percelen_2020_sf %>%
+  st_drop_geometry() %>%
+  group_by(type_telling) %>%
+  summarise(oppervlakte_ha_totaal = sum(oppervlakte_ha),
+            n_bezoeken = n_distinct(datum)) %>%
+  ungroup()
+```
+
+
 
 
 ```{r}
@@ -110,6 +152,20 @@ das <- das_orig %>%
 
 ```
 
+# Samenvoegen burchten
+
+```{r}
+data_extern <- burchten_all %>%
+  bind_rows(das)
+
+visit_ids <- data_extern %>%
+  distinct(meetnet, locatie, datum) %>%
+  mutate(visit_id = str_c("extern_", 1:n_distinct(meetnet, locatie, datum)))
+
+data_extern_burchten <- data_extern %>%
+  left_join(visit_ids, by = c("meetnet", "locatie", "datum")) %>%
+  select(meetnet, protocol, locatie, visit_id, datum, everything())
+```
 
 # Gerande oeverspin
 
@@ -166,46 +222,168 @@ data_oeverspinnen <- data_oeverspinnen_sf %>%
   select(meetnet, jaar, locatie, gebied, datum, id, everything())
   
 
-
-# locaties_prioritair <- read_vc(root = "../raw",file =  "werkpakketten_locaties") %>%
-#   filter(meetnet == "Gerande oeverspin",
-#          werkpakket == "veldwerk 2020")
-# 
-# pot_leefgebied_prioritair <- read_sf("../raw/meetnetten_locaties.gpkg", "locaties") %>%
-#   filter(meetnet == "Gerande oeverspin") %>%
-#   filter(locatie %in% locaties_prioritair$locatie) %>%
-#   st_transform(crs = 31370) %>%
-#   select(locatie_prioritair = locatie)
-# 
-# oeverspin_2020_sf <- oeverspin_2020_orig %>%
-#   filter(naam_nl == "Gerande oeverspin") %>%
-#   st_as_sf(coords = c("x", "y"), crs = 31370) %>%
-#   st_join(pot_leefgebied_prioritair) %>%
-#   st_join(pot_leefgebied) 
-
-
 ```
-
-
-# Samenvoegen burchten
+# Mollusken
 
 ```{r}
-data_extern <- burchten_all %>%
-  bind_rows(das)
+data_mollusken_2020 <- read.csv2("../data_extern/count_data/mollusken/P-CO-000385_Mollusken_wbe_2020_Dump20201201__ALLES_UNIEK.csv", stringsAsFactors = FALSE) %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d"),
+         naam_nl = ifelse(naam_nl == "Zegge-korfslak", "Zeggekorfslak", naam_nl))
 
-visit_ids <- data_extern %>%
-  distinct(meetnet, locatie, datum) %>%
-  mutate(visit_id = str_c("extern_", 1:n_distinct(meetnet, locatie, datum)))
+data_mollusken_2019 <- read_sf(dsn = "../data_extern/count_data/mollusken", layer = "Export_waarnemingen_2019_molluskenmeetnetten") %>%
+  st_drop_geometry() %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d-%m-%Y"))
 
-data_extern_burchten <- data_extern %>%
-  left_join(visit_ids, by = c("meetnet", "locatie", "datum")) %>%
-  select(meetnet, protocol, locatie, visit_id, datum, everything())
+data_mollusken_2016_2018 <- read_sf(dsn = "../data_extern/count_data/mollusken", layer = "Mollusken 2016-2018-10-30 export wnbe") %>%
+  st_drop_geometry() %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d"))
+
+data_mollusken <- bind_rows(data_mollusken_2016_2018,
+                           data_mollusken_2019,
+                           data_mollusken_2020) %>%
+  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld"),
+         meetnet = naam_nl) %>%
+  filter(!is.na(x))
+
+# locaties_mollusken_actief_sf <- read_sf("../raw/meetnetten_locaties.gpkg", "locaties") %>%
+#   filter(soortgroep == "mollusken") %>%
+#   filter(is_active) %>%
+#   select(meetnet, locatie) %>%
+#   st_transform(crs = 31370) 
+
+pot_leefgebied_zeggekorfslak <- read_sf(dsn = "../data_extern/sampleframe/Zeggekorfslak_Lambert1972_versie2018-03-14", "Zeggekorfslak_Lambert1972_versie2018-03-14") %>%
+  select(meetnet = Meetnet, locatie = Naam)
+
+pot_leefgebied_platte_schijfhoorn <- read_sf(dsn = "../data_extern/sampleframe/PlatteSchijfhoren_Lambert1972_versie2018-03-14", "PlatteSchijfhoren_Lambert1972_versie2018-03-14") %>%
+  select(meetnet = Meetnet, locatie = Naam) %>%
+  mutate(meetnet = "Platte schijfhoren")
+
+pot_leefgebied_nauwe_korfslak <- read_sf(dsn = "../data_extern/sampleframe/NauweKorfslak_Lambert1972_versie2018-03-14", "NauweKorfslak_Lambert1972_versie2018-03-14") %>%
+  select(meetnet = Meetnet, locatie = Naam) %>%
+  mutate(meetnet = "Nauwe korfslak")
+
+pot_leefgebied_bataafse_stroommossel <- read_sf(dsn = "../data_extern/sampleframe/BataafseStroommossel_Lambert1972_versie2018-03-14", "BataafseStroommossel_Lambert1972_versie2018-03-14") %>%
+  select(meetnet = Meetnet, locatie = Naam) %>%
+  mutate(meetnet = "Bataafse stroommossel")
+
+pot_leefgebied_mollusken <- bind_rows(
+  pot_leefgebied_zeggekorfslak,
+  pot_leefgebied_platte_schijfhoorn,
+  pot_leefgebied_nauwe_korfslak,
+  pot_leefgebied_bataafse_stroommossel
+)
+
+data_mollusken_by_meetnet <- data_mollusken %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370) %>%
+  group_by(meetnet) %>%
+  nest()
+
+closest_location_actief <- function(meetnet_select, observations) {
+  
+  locations_meetnet <- pot_leefgebied_mollusken %>%
+    filter(meetnet == meetnet_select )
+  
+  observations_result <- observations %>%
+    st_join(locations_meetnet, join = st_nearest_feature) %>%
+    group_by(id) %>%
+    mutate(dist = min(drop_units(st_distance(geometry, locations_meetnet))),
+           dist = round(dist, 0)) %>%
+    ungroup() %>%
+    dplyr::select(-meetnet) %>%
+    st_drop_geometry() %>%
+    mutate(x = st_coordinates(observations)[,1],
+           y = st_coordinates(observations)[,2])
+  
+  return(observations_result)
+            
+}
+
+data_mollusken_by_meetnet <- data_mollusken_by_meetnet %>%
+  mutate(data_locations_actief = map2(meetnet, data, closest_location_actief))
+
+data_mollusken_locaties <- data_mollusken_by_meetnet %>%
+  select(data_locations_actief) %>%
+  unnest(data_locations_actief) %>%
+  mutate(locatie = ifelse(dist > 500, NA, locatie)) %>%
+  rename(dist_to_pot_leefgebied = dist) %>%
+  mutate(jaar = as.numeric(format(datum, "%Y"))) %>%
+  select(meetnet, jaar, locatie, gebied, datum, id, everything())
+
 ```
+
+# Roestbruine kniptor
+
+```{r}
+
+data_roestbruine_kniptor_2020 <- read.csv2("../data_extern/count_data/roestbruine_kniptor/RoestbrKniptor_wbe_2020.csv", stringsAsFactors = FALSE) %>%
+  filter(lon != "onbekend") %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d/%m/%Y"))
+
+data_roestbruine_kniptor_2019 <- read_sf("../data_extern/count_data/roestbruine_kniptor", "Roestbruine_kniptor_waarnemingen_2019") %>%
+    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+    mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d")) %>%
+  st_drop_geometry()
+
+data_roestbruine_kniptor_2018 <- read_sf("../data_extern/count_data/roestbruine_kniptor", "Roestbruine kniptor waarnemingen export 2018-12") %>%
+    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+    mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d")) %>%
+  st_drop_geometry()
+
+data_roestbruine_kniptor_2020 <- read.csv2("../data_extern/count_data/gerande_oeverspin/GerandeOeverspin_wbe_2020.csv") %>%
+    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+    mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d/%m/%Y"))
+
+data_roestbruine_kniptor <- bind_rows(data_roestbruine_kniptor_2018,
+                           data_roestbruine_kniptor_2019,
+                           data_roestbruine_kniptor_2020) %>%
+  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld")) %>%
+  filter(!is.na(x))
+
+locaties_roestbruine_kniptor_sf <- read_sf("../raw/meetnetten_locaties.gpkg", "locaties") %>%
+  filter(meetnet == "Roestbruine kniptor") %>%
+  select(meetnet, locatie, is_active) %>%
+  st_transform(crs = 31370)
+
+data_roestbruine_kniptor_sf <- data_roestbruine_kniptor %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370) %>%
+  st_join(locaties_roestbruine_kniptor_sf, join = st_nearest_feature) %>%
+  group_by(id) %>%
+  mutate(dist = min(st_distance(geometry, locaties_roestbruine_kniptor_sf))) %>%
+  ungroup()
+
+data_roestbruine_kniptor <- data_roestbruine_kniptor_sf %>%
+  st_drop_geometry() %>%
+  mutate(x = st_coordinates(data_roestbruine_kniptor_sf)[, 1],
+         y = st_coordinates(data_roestbruine_kniptor_sf)[, 2],
+         dist_to_pot_leefgebied = round(drop_units(dist), 0),
+         locatie = ifelse(dist_to_pot_leefgebied > 250, NA, locatie),
+         is_active = ifelse(is.na(locatie), NA, is_active)) %>%
+  select(-dist) %>%
+  mutate(jaar = as.numeric(format(datum, "%Y")),
+         meetnet = "Roestbruine kniptor") %>% 
+  select(meetnet, jaar, locatie, locatie_actief = is_active, gebied, datum, id, everything())
+  
+```
+
+
 
 # Export
 
 ```{r}
 write_vc(data_extern_burchten, "data_burchten", "../processed")
 write_vc(data_oeverspinnen, "data_oeverspinnen", "../processed", strict = FALSE)
+write_vc(data_mollusken_locaties, "data_mollusken", "../processed", strict = FALSE)
+write_vc(data_roestbruine_kniptor, "data_roestbruine_kniptor", "../processed", strict = FALSE)
 ```
 

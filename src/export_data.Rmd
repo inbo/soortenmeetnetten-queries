@@ -259,7 +259,7 @@ aantallen_planten <- aantallen_planten %>%
 
 aantallen_planten_puntlocaties <- aantallen_planten %>%
   filter(puntlocatie == 1) %>%
-  select(meetnet, protocol, locatie, datum,  soort_w = soort_wet, visit_id, validatie_bezoek = visit_id, track, sample_id, schaal, code, beschrijving_floroncode, opm)
+  select(meetnet, protocol, locatie, datum,  soort_w = soort_wet, visit_id, validatie_bezoek = validatie, track, sample_id, schaal, code, beschrijving_floroncode, opm)
 
 aantallen_planten <- aantallen_planten %>%
   st_drop_geometry() %>%
