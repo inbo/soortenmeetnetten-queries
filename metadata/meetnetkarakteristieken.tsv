@@ -1,33 +1,34 @@
 soortgroep	meetnet	protocol	type	duur_meetcyclus	generatie	bezoeken	opstartjaar	type_soort	start_telperiode	einde_telperiode	is_sample	n_locaties
-amfibieën	Boomkikker	Amfibieën - Larven en metamorfen	Steekproef	3		1	2016	EPS	18414	18458	0	31
-amfibieën	Boomkikker	Amfibieën - Larven en metamorfen	Steekproef	3		1	2016	EPS	18414	18458	1	70
-amfibieën	Boomkikker	Padden en kikkers - Roepkoren	Steekproef	3		2	2016	EPS	18353	18443	0	31
-amfibieën	Boomkikker	Padden en kikkers - Roepkoren	Steekproef	3		2	2016	EPS	18353	18443	1	70
+amfibieën	Boomkikker	Amfibieën - Larven en metamorfen	Steekproef	3		1	2016	EPS	18414	18458	0	41
+amfibieën	Boomkikker	Amfibieën - Larven en metamorfen	Steekproef	3		1	2016	EPS	18414	18458	1	59
+amfibieën	Boomkikker	Padden en kikkers - Roepkoren	Steekproef	3		2	2016	EPS	18353	18443	0	41
+amfibieën	Boomkikker	Padden en kikkers - Roepkoren	Steekproef	3		2	2016	EPS	18353	18443	1	59
 amfibieën	Kamsalamander	Amfibieën - Fuiken	Steekproef	3		2	2017	EPS	18336	18413	0	161
 amfibieën	Kamsalamander	Amfibieën - Fuiken	Steekproef	3		2	2017	EPS	18336	18413	1	60
 amfibieën	Kamsalamander	Amfibieën - Larven en metamorfen	Steekproef	3		1	2017	EPS	18414	18458	0	161
 amfibieën	Kamsalamander	Amfibieën - Larven en metamorfen	Steekproef	3		1	2017	EPS	18414	18458	1	60
-amfibieën	Knoflookpad	Knoflookpad - Roepkoren	Integraal	1		1	2017	VPS	18336	18382	1	7
-amfibieën	Knoflookpad	Padden en kikkers - Roepkoren	Integraal	1		2	2017	VPS	18336	18382	1	7
-amfibieën	Rugstreeppad	Rugstreeppad - Transect	Integraal	3		3	2019	EPS	18353	18443	1	50
+amfibieën	Knoflookpad	Knoflookpad - Roepkoren	Integraal	1		1	2017	VPS	18336	18382	1	4
+amfibieën	Knoflookpad	Padden en kikkers - Roepkoren	Integraal	1		2	2017	VPS	18336	18382	1	4
+amfibieën	Rugstreeppad	Rugstreeppad - Transect	Integraal	3		3	2019	EPS	18353	18443	1	49
 amfibieën	Vuursalamander	Vuursalamander - Transect	Integraal	1		2	2016	VPS	18489	18581	1	39
 dagvlinders	Aardbeivlinder	Vlinders - Transecten	Integraal	1		3	2017	VPS	18383	18413	1	4
-dagvlinders	Argusvlinder	Vlinders - Transecten	Steekproef	3	Generatie 1	3	2016	VPS	18383	18494	0	6
-dagvlinders	Argusvlinder	Vlinders - Transecten	Steekproef	3	Generatie 2	3	2016	VPS	18383	18494	0	6
-dagvlinders	Argusvlinder	Vlinders - Transecten	Steekproef	3	Generatie 1	3	2016	VPS	18383	18494	1	29
-dagvlinders	Argusvlinder	Vlinders - Transecten	Steekproef	3	Generatie 2	3	2016	VPS	18383	18494	1	29
+dagvlinders	Argusvlinder	Vlinders - Transecten	Steekproef	3	Generatie 1	3	2016	VPS	18383	18494	0	5
+dagvlinders	Argusvlinder	Vlinders - Transecten	Steekproef	3	Generatie 2	3	2016	VPS	18383	18494	0	5
+dagvlinders	Argusvlinder	Vlinders - Transecten	Steekproef	3	Generatie 1	3	2016	VPS	18383	18494	1	30
+dagvlinders	Argusvlinder	Vlinders - Transecten	Steekproef	3	Generatie 2	3	2016	VPS	18383	18494	1	30
 dagvlinders	Bruin dikkopje	Vlinders - Transecten	Integraal	1	Generatie 1	3	2017	VPS	18383	18494	1	4
 dagvlinders	Bruin dikkopje	Vlinders - Transecten	Integraal	1	Generatie 2	3	2017	VPS	18383	18494	1	4
 dagvlinders	Bruine eikenpage	Vlinders - Gebiedstelling	Integraal	1		3	2018	VPS	18428	18458	1	13
 dagvlinders	Gentiaanblauwtje	Vlinders - Eitellingen	Integraal	1		1	2016	VPS	18475	18505	1	16
 dagvlinders	Grote weerschijnvlinder	Vlinders - Gebiedstelling	Integraal	1		3	2018	VPS	18428	18468	1	10
 dagvlinders	Heivlinder	Vlinders - Transecten	Steekproef	3		3	2016	VPS	18463	18505	0	5
-dagvlinders	Heivlinder	Vlinders - Transecten	Steekproef	3		3	2016	VPS	18463	18505	1	29
+dagvlinders	Heivlinder	Vlinders - Transecten	Steekproef	3		3	2016	VPS	18463	18505	1	30
 dagvlinders	Klaverblauwtje	Vlinders - Transecten	Integraal	1	Generatie 1	3	2017	VPS	18383	18484	1	1
 dagvlinders	Klaverblauwtje	Vlinders - Transecten	Integraal	1	Generatie 2	3	2017	VPS	18383	18484	1	1
 dagvlinders	Kommavlinder	Vlinders - Transecten	Integraal	1		3	2016	VPS	18475	18505	1	11
 dagvlinders	Moerasparelmoervlinder	Vlinders - Transecten	Integraal	1		3	2020	EPS	18383	18413	1	1
-dagvlinders	Oranje zandoogje	Vlinders - Transecten	Steekproef	3		3	2017	VPS	18453	18489	1	59
+dagvlinders	Oranje zandoogje	Vlinders - Transecten	Steekproef	3		3	2017	VPS	18453	18489	0	29
+dagvlinders	Oranje zandoogje	Vlinders - Transecten	Steekproef	3		3	2017	VPS	18453	18489	1	30
 dagvlinders	Veldparelmoervlinder	Vlinders - Transecten	Integraal	1		3	2016	VPS	18383	18413	1	12
 libellen	Beekrombout	Libellen - Larvenhuidjes Beekrombout	Integraal	1		3	2018	VPS	18383	18413	1	17
 libellen	Bosbeekjuffer	Libellen - Transect	Steekproef	3		3	2018	VPS	18402	18494	1	30
@@ -41,9 +42,9 @@ libellen	Sierlijke witsnuitlibel	Libellen - Populatietelling per locatie	Integra
 libellen	Speerwaterjuffer	Libellen - Populatietelling per locatie	Integraal	1		2	2017	VPS	18397	18433	1	6
 libellen	Variabele waterjuffer	Libellen - Transect	Steekproef	3		2	2017	VPS	18383	18443	1	30
 libellen	Vroege glazenmaker	Libellen - Transect	Steekproef	3		2	2017	VPS	18402	18443	1	31
-mollusken	Bataafse stroommossel			12		1	2017	EPS	NA	NA	1	8
+mollusken	Bataafse stroommossel		Inhaalslag	12		1	2017	EPS	NA	NA	1	8
 mollusken	Nauwe korfslak	Nauwe korfslak - Inhaalslag	Inhaalslag	12		1	2017	EPS	NA	NA	1	14
-mollusken	Platte schijfhoren			12		1	2017	EPS	NA	NA	1	4
+mollusken	Platte schijfhoren		Inhaalslag	12		1	2017	EPS	NA	NA	1	4
 mollusken	Zeggekorfslak	Zeggekorfslak - Inhaalslag	Inhaalslag	12		1	2017	EPS	NA	NA	1	259
 overige	Gerande oeverspin	Gerande oeverspin - Inhaalslag	Inhaalslag	6		1	2016	VPS	18383	18474	1	117
 overige	Lentevuurspin	Lentevuurspin - Gebiedstelling	Integraal	1		1	2016	VPS	NA	NA	1	6
@@ -56,23 +57,24 @@ overige	Zadelsprinkhaan	Sprinkhanen - Gebiedstelling	Integraal	1		2	2016	VPS	184
 planten	Bleekgeel blaasjeskruid	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	NA	NA	NA	NA
 planten	Driekantige bies	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18414	18535	1	12
 planten	Duingentiaan	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	18444	18535	1	13
-planten	Fijn goudscherm	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	NA	NA	1	1
+planten	Fijn goudscherm	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	18444	18535	1	1
 planten	Gesteelde zoutmelde	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18444	18535	1	2
-planten	Grote bremraap	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	18383	18505	1	37
+planten	Grote bremraap	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	18383	18505	1	36
 planten	Harlekijn	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	NA	NA	1	3
 planten	Honingorchis	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	18414	18474	1	13
+planten	Kleine schorseneer	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	18383	18443	0	1
 planten	Kleine schorseneer	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	18383	18443	1	6
 planten	Kleine wolfsklauw	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	NA	NA	1	2
 planten	Klimopklokje	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18414	18535	1	8
 planten	Koprus	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	NA	NA	1	1
 planten	Krabbenscheer	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	18475	18535	1	3
 planten	Moerassmele	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18444	18505	1	3
-planten	Plat fonteinkruid	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18444	18505	1	3
+planten	Plat fonteinkruid	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18444	18505	1	2
 planten	Polei	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18444	18535	1	2
 planten	Purperorchis	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	18383	18443	1	11
 planten	Ronde zegge	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18383	18443	1	7
 planten	Slank wollegras	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18383	18474	1	4
-planten	Spits fonteinkruid	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18414	18505	1	13
+planten	Spits fonteinkruid	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18414	18505	1	11
 planten	Stekende bies	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18414	18505	1	3
 planten	Veenmosorchis	Vaatplanten - Aantal individuen	Integraal	3		1	2016	VPS	NA	NA	1	1
 planten	Weegbreefonteinkruid	Vaatplanten - Oppervlakte	Integraal	3		1	2016	VPS	18414	18474	1	12
@@ -82,5 +84,5 @@ vogels	Algemene Broedvogelmonitoring (ABV)	Algemene Broedvogelmonitoring	Steekpr
 zoogdieren	Das	Burchtentelling das	Integraal	3		1	2016	VPS	NA	NA	NA	NA
 zoogdieren	Hamster	Burchtentelling hamster	Integraal	1		1	2016	EPS	NA	NA	1	1
 zoogdieren	Hazelmuis	Hazelmuis - Transect	Integraal	1		2	2016	EPS	18520	18581	1	3
-zoogdieren	Hazelmuis - Nestbuizen	Hazelmuis - Nestbuizen	Integraal	1		2	2016	EPS	18363	18571	1	17
+zoogdieren	Hazelmuis - Nestbuizen	Hazelmuis - Nestbuizen	Integraal	1		2	2020	EPS	18363	18571	1	17
 zoogdieren	Otter	Otter	Inhaalslag	12		1	2018	EPS	18293	18596	1	17
