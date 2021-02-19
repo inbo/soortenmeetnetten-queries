@@ -135,7 +135,7 @@ burchten_all_sf %>%
 # Das
 
 ```{r}
-das_orig <- read.csv2("../data_extern/das/meetnet_das_2016_2018.csv")
+das_orig <- read.csv2("../data_extern/count_data/das/meetnet_das_2016_2020.csv")
 
 das <- das_orig %>%
   mutate(meetnet = "Das",
@@ -146,10 +146,27 @@ das <- das_orig %>%
          datum = as.Date(str_c("01-01-", Jaar), format = "%d-%m-%Y"),
          aantal = ifelse(status == "Verdwenen", 0, 1)
          ) %>%
-  select(meetnet, protocol, locatie, datum, soort_nl, soort_wet, aantal, status, bewoning, opmerking = Gebied) %>%
+  select(meetnet, protocol, locatie, datum, jaar = Jaar, soort_nl, soort_wet, aantal, status, bewoning, opmerking = Gebied) %>%
   gather(status, bewoning, key = "covariabele", value = "waarde")
   
+overzicht_das_jaar <- das %>%
+  group_by(meetnet, jaar, locatie, opmerking) %>%
+  summarise(n_bezoeken = n_distinct(datum)) %>%
+  ungroup() %>%
+  group_by(meetnet, jaar, opmerking) %>%
+  summarise(n_bezoeken = sum(n_bezoeken),
+            n_locaties = n_distinct(locatie)) %>%
+  ungroup()
 
+overzicht_das_cyclus2 <- das %>%
+  filter(jaar >= 2019) %>%
+  group_by(meetnet, locatie, opmerking) %>%
+  summarise(n_bezoeken = n_distinct(datum)) %>%
+  ungroup() %>%
+  group_by(meetnet,  opmerking) %>%
+  summarise(n_bezoeken = sum(n_bezoeken),
+            n_locaties = n_distinct(locatie)) %>%
+  ungroup()
 ```
 
 # Samenvoegen burchten
