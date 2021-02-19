@@ -1,5 +1,6 @@
 library(git2rdata)
 library(tidyverse)
+library(sf)
 
 ######################################################################
 
@@ -53,3 +54,50 @@ tellers_n_dagen_totaal <- tellers_orig %>%
   ungroup() 
 
 write.csv2(tellers_n_dagen_totaal, "processed/vrijwilligers_dagen_totaal.csv", row.names = FALSE)
+
+##############################################################
+
+militaire_domeinen <- read_sf(dsn = "gis/militaire_domeinen", layer = "MilitaireDomeinen_BeheerANB_DissolveWGS84") %>%
+  select(domein_id =DomeinID)
+
+locaties <- read_sf(dsn = "raw/meetnetten_locaties.gpkg", "locaties")
+
+tellers_info <- read_vc(root = "raw", "meetnetten_users")   
+
+locaties_mil_domeinen <- locaties %>%
+  filter(is_active == TRUE) %>%
+  filter(locatie_type == "locatie") %>%
+  st_join(militaire_domeinen) %>%
+  filter(!is.na(domein_id)) %>%
+  select(meetnet, locatie, domein_id, geclaimd_door) %>%
+  st_drop_geometry()
+
+
+locatie_users_claim <- read_vc(root = "raw", "locatie_users") %>%
+  mutate(type_teller = "geclaimd")
+
+locatie_users_reserve <- read_vc(root ="raw", "locatie_users_reserve") %>%
+  mutate(type_teller = "reserve")
+
+locatie_users <- bind_rows(locatie_users_claim,
+                           locatie_users_reserve) %>%
+  left_join(tellers_info, by = c("meetnet", "first_name", "last_name", "email"))
+  
+locatie_users_mil_domeinen <- locatie_users %>%
+  inner_join(locaties_mil_domeinen, by = c("meetnet", "locatie"))
+
+users_mil_domeinen <- locatie_users_mil_domeinen %>%
+  group_by(first_name, last_name, email, meetnet) %>%
+  mutate(locaties = str_c(locatie, " (", type_teller,")", collapse = ", ")) %>%
+  ungroup() %>%
+  mutate(locaties_meetnet = str_c(meetnet, ": ", locaties)) %>%
+  group_by(first_name, last_name, email, postcode, gemeente, adres) %>%
+  summarise(meetnetten = str_c(unique(meetnet), collapse = ", "),
+            locaties = str_c(unique(locaties_meetnet), collapse = "; ")) %>%
+  ungroup() %>%
+  rename(voornaam = first_name, achternaam = last_name) %>%
+  arrange(achternaam)
+
+write.csv2(users_mil_domeinen, "processed/tellers_militaire_domeinen/tellers_militaire_domeinen.csv", row.names = FALSE)
+      
+
