@@ -223,6 +223,8 @@ query_aantallen_planten <- "select O.id
     , O.number_min as aantal_min
     , O.number_max as aantal_max
     , SC.description as beschrijving_floroncode
+    , u.first_name
+    , u.last_name
  from Projects_project P
     inner join projects_projectgroup PG on PG.id = P.group_id
     inner join fieldwork_visit V on V.project_ID = P.ID
@@ -259,7 +261,8 @@ aantallen_planten <- aantallen_planten %>%
 
 aantallen_planten_puntlocaties <- aantallen_planten %>%
   filter(puntlocatie == 1) %>%
-  select(meetnet, protocol, locatie, datum,  soort_w = soort_wet, visit_id, validatie_bezoek = validatie, track, sample_id, schaal, code, beschrijving_floroncode, opm)
+  mutate(waarnemer = str_c(first_name, " ", last_name)) %>%
+  select(meetnet, protocol, locatie, datum,  soort_w = soort_wet, visit_id, waarnemer, validatie_bezoek = validatie, track, sample_id, schaal, code, beschrijving_floroncode, opm)
 
 aantallen_planten <- aantallen_planten %>%
   st_drop_geometry() %>%
@@ -653,7 +656,7 @@ st_write(sublocations_transecten, "../raw/meetnetten_locaties.gpkg", layer = "tr
 st_write(aantallen_planten_puntlocaties, "../raw/planten_puntlocaties.gpkg", layer = "planten_puntlocaties", driver = "GPKG", delete_layer = TRUE)
 st_write(tracks_planten, "../raw/planten_puntlocaties.gpkg", layer = "tracks", driver = "GPKG", delete_layer = TRUE)
 st_write(aantallen_planten_puntlocaties,  "../raw/planten_puntlocaties", layer = "planten_puntlocaties", driver = "ESRI Shapefile", delete_layer = TRUE)
-st_write(aantallen_planten_puntlocaties,  "../raw/planten_tracks", layer = "planten_tracks", driver = "ESRI Shapefile", delete_layer = TRUE)
+st_write(tracks_planten,  "../raw/planten_tracks", layer = "planten_tracks", driver = "ESRI Shapefile", delete_layer = TRUE)
 write_vc(aantallen_planten2, "aantallen_planten_FP", root = "../raw", sorting = c("meetnet", "locatie", "visit_id", "sample_id"), strict = FALSE)
 
 version <- data.frame(date_export = Sys.Date())
