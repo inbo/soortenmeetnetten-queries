@@ -14,7 +14,7 @@ library(readxl)
 
 
 ```{r}
-planten_2020_orig <- read_excel("../data_extern/count_data/planten/P-CO-000385_Planten_wbe_Meetnetten_export.xlsx")
+planten_2020_orig <- read_excel("../data_extern/count_data/planten/Planten_wbe_Meetnetten_exportfinaal_aangepast.xlsx")
 
 planten_meetvariabelen <- read.csv2("../data_extern/count_data/Planten/PlantenMeetvariabelen.csv") %>%
   rename(meetnet = Meetnet)
@@ -25,6 +25,7 @@ data_ruw_2020 <- planten_2020_orig %>%
          naam_nl = ifelse(naam_lat == "Orchis morio", "Harlekijn", naam_nl),
          naam_nl = ifelse(naam_lat == "Diphasiastrum tristachyum", "Kleine wolfsklauw", naam_nl)
          ) %>% 
+  mutate(datum = ifelse(id == 205241481, "2020-06-15", datum))%>%
   select(id, meetnet = naam_nl,  datum,  x, y, aantal, floroncode = Floroncode, typewaarneming, waarnemer = wnr, status, locatie_np = Locatie, ingevoerd = Meetnet, opm = bijzonderheden)%>%
   mutate(datum = as.Date(datum, format = "%Y-%m-%d"),
          jaar = as.numeric(format(as.Date(datum, format = "%Y-%m-%d"),"%Y")),
@@ -102,7 +103,58 @@ check <- data_extern_locaties %>%
   mutate(naam_controle = locatie == locatie_np)
 
 n_distinct(check$locatie)
+
+locaties_planten_inactief_sf <- st_read("../raw/meetnetten_locaties.gpkg", "locaties") %>%
+  filter(soortgroep == "planten") %>%
+  filter(!is_active) %>%
+  mutate(locatie_inactief = as.character(locatie),
+         meetnet = as.character(meetnet)) %>%
+    mutate(locatie_inactief = str_replace(locatie_inactief, "\u0091", "'"),
+         locatie_inactief = str_replace(locatie_inactief, "\u0096", "-")) %>%
+  select(meetnet, locatie_inactief) %>%
+  st_transform(crs = 31370) 
+
+closest_location_inactief <- function(meetnet_select, observations) {
+  
+  locations_meetnet <- locaties_planten_inactief_sf %>%
+    filter(meetnet == meetnet_select )
+  
+  observations_result <- observations %>%
+    st_join(locations_meetnet, join = st_nearest_feature) %>%
+    group_by(id) %>%
+    mutate(dist_inactief = min(drop_units(st_distance(geometry, locations_meetnet))),
+           dist_inactief = round(dist_inactief, 0)) %>%
+    ungroup() %>%
+    dplyr::select(-meetnet) %>%
+    st_drop_geometry()
+  
+  return(observations_result)
+            
+}
+
+data_extern_locaties_inactief <- data_extern_by_meetnet %>%
+  mutate(data_locations_inactief =  map2(meetnet, data, closest_location_inactief)) %>% 
+  select(data_locations_inactief) %>%
+  unnest(data_locations_inactief)
+
+data_extern_locaties_inactief <- data_extern_locaties_inactief %>%
+  select(meetnet, id, locatie_inactief, dist_inactief)
+
+data_extern_locaties2 <- data_extern_locaties %>%
+  left_join(data_extern_locaties_inactief, by = c("id", "meetnet")) %>%
+    mutate(locatie_inactief = ifelse(dist_inactief > 500, NA, locatie_inactief),
+         dist_inactief = ifelse(dist_inactief > 500, NA, dist_inactief))
 ```
+
+```{r,eval=FALSE}
+testje <- planten_2020_orig %>%
+  st_as_sf(coords = c("x", "y"), crs =31370) %>%
+  st_transform(crs = 4326)
+
+locaties_meetnet
+  
+```
+
 
 
 ```{r}
@@ -115,23 +167,26 @@ bezoeken_planten <- read_vc("bezoeken", "../raw") %>%
   left_join(locaties_planten_actief_sf, by = c("meetnet", "locatie")) %>%
   select(meetnet, locatie, datum, visit_id)
 
-data_waarnemingen <- data_extern_locaties %>%
+data_waarnemingen <- data_extern_locaties2 %>%
   left_join(bezoeken_planten, by = c("meetnet", "locatie", "datum")) %>%
   rename(afstand_tot_locatie = "dist") %>%
   mutate(bron = "waarenmingen.be",
          schaal = ifelse(meetvariabele == "Aantal", "aantal (Floron)", "oppervlakte (Floron")) 
 
 aantallen_waarnemingen_mn <- data_waarnemingen %>%
+  filter(jaar == 2020) %>%
   filter(floroncode_ingevoerd == "Ja") %>%
   filter(!is.na(locatie)) %>%
-  select(bron, meetnet, locatie, afstand_tot_locatie, jaar, datum, id_wnm = id, code = floroncode,  schaal , aantal, x =x_coord, y = y_coord, visit_id, opm)
+  filter(!is.na(visit_id)) %>%
+  select(bron, meetnet, locatie, afstand_tot_locatie, jaar, datum, waarnemer, id_wnm = id, code = floroncode,  schaal , aantal, x =x_coord, y = y_coord, visit_id, opm)
 
 aantallen_waarnemingen_extra <- data_waarnemingen %>%
   filter((floroncode_ingevoerd == "Nee") | (is.na(locatie))) %>%
-  select(bron, meetnet, locatie, afstand_tot_locatie, jaar, datum, id_wnm = id, code = floroncode,  schaal, aantal, x = x_coord, y = y_coord, visit_id, opm)
+  select(bron, meetnet, locatie, afstand_tot_locatie, jaar, datum, waarnemer, id_wnm = id, code = floroncode,  schaal, aantal, x = x_coord, y = y_coord, visit_id, opm)
 
 write_vc(data_waarnemingen, file = "data_plantenmeetnetten_2020", root = "../processed", strict = FALSE)
 
+write.csv2(aantallen_waarnemingen_mn, file = "../processed/data_plantenmeetnetten_migratie2020.csv", row.names = FALSE, , na = "")
 ```
 
 ## Waarnemingen zonder bezoeken
@@ -141,9 +196,9 @@ write_vc(data_waarnemingen, file = "data_plantenmeetnetten_2020", root = "../pro
 controle_bezoeken <- data_waarnemingen %>%
   filter(floroncode_ingevoerd == "Ja") %>%
   filter(is.na(visit_id)) %>%
-  select(id, meetnet, locatie, datum, floroncode, x_coord, y_coord)
+  select(id, meetnet, locatie, locatie_inactief, locatie_np, datum, floroncode, x_coord, y_coord, waarnemer)
 
-write.csv2(controle_bezoeken, "../output/wnm_planten_zonderbezoeken_2020.csv")
+write.csv2(controle_bezoeken, "../output/wnm_planten_zonderbezoeken_2020_versie2021-02-25.csv")
 ```
 
 ## Bezoeken zonder waarnemingen
@@ -188,8 +243,31 @@ aantallen_planten <- bind_rows(aantallen_waarnemingen_mn,
                                aantallen_meetnetten) %>%
   arrange(meetnet, locatie, bron)
 
-write.csv2(aantallen_planten, "../processed/data_planten_2020.csv", row.names = FALSE)
+write.csv2(aantallen_planten, "../processed/data_planten_2020.csv", row.names = FALSE, na = "")
 
-write.csv2(aantallen_waarnemingen_extra, "../processed/data_planten_2020_extra.csv", row.names = FALSE)
+write.csv2(aantallen_waarnemingen_extra, "../processed/data_planten_2020_extra.csv", row.names = FALSE, na = "")
 ```
 
+## Alle data tussen 2016 en 2020
+
+```{r}
+aantallen_planten_meetnetten <- read_sf(dsn = "../raw/planten_puntlocaties.gpkg", "planten_puntlocaties") %>%
+  mutate(jaar = as.numeric(format(datum, "%Y"))) %>%
+  st_transform(crs = 31370) %>%
+  filter(validatie_bezoek != -1) %>%
+  mutate(bron = "meetnetten.be",
+         afstand_tot_locatie = 0) %>%
+  select(-soort_w, -beschrijving_floroncode, -protocol, -sample_id, -validatie_bezoek)
+
+aantallen_meetnetten <- aantallen_planten_meetnetten %>%
+  st_drop_geometry() %>%
+  mutate(x = st_coordinates(aantallen_planten_meetnetten)[, 1],
+         y = st_coordinates(aantallen_planten_meetnetten)[, 2])
+
+aantallen_planten <- bind_rows(aantallen_waarnemingen_mn,
+                               aantallen_meetnetten) %>%
+  arrange(meetnet, locatie, bron)
+
+write.csv2(aantallen_planten, "../processed/data_planten_2016_2020.csv", row.names = FALSE, na = "")
+
+```
