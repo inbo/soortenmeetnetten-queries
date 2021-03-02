@@ -42,6 +42,7 @@ query_bezoeken <- "Select PG.name as soortgroep
     , L.name as locatie
     , V.start_date as datum
     , V.start_time
+    , V.end_time
     , V.end_date
     , V.task_id
     , v.validation_status as validatie
@@ -80,7 +81,7 @@ bezoeken_orig <- set_utf8(dbGetQuery(con, query_bezoeken))
 bezoeken <- bezoeken_orig %>%
   mutate(jaar = as.numeric(format(datum, "%Y")),
          doy = as.numeric(format(datum, "%j"))) %>%
-  group_by(meetnet, protocol, locatie, jaar) %>%
+  group_by(meetnet, protocol, locatie, jaar, visit_id) %>%
   mutate(i_bezoek = rank(doy)) %>%
   ungroup() %>%
   select(soortgroep, meetnet, protocol, locatie, jaar, datum, doy, i_bezoek, everything()) %>%
