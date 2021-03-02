@@ -164,6 +164,7 @@ query_aantallen <- "select PG.name as soortgroep
     , SP.scientific_name as soort_wet
     , PS.is_primary as primaire_soort
     , O.sample_id
+    , O.geom
     , O.sex as geslacht
     , ACT.i18n->>'name_nl' as activiteit
     , LS.i18n->>'name_nl' as levensstadium
@@ -192,7 +193,26 @@ Order by PG.name
     , V.start_date
     , L1.Name"
 
-aantallen_orig <- set_utf8(dbGetQuery(con, query_aantallen)) 
+#aantallen_orig <- set_utf8(dbGetQuery(con, query_aantallen)) 
+
+aantallen_orig <- st_read(dsn = con, query = query_aantallen) 
+
+aantallen_punt <- aantallen_orig2 %>%
+  filter(st_is(geom, type = "POINT")) 
+
+aantallen_punt <- aantallen_punt %>%
+  mutate(x = st_coordinates(aantallen_punt)[, 1],
+         y = st_coordinates(aantallen_punt)[, 2]) %>%
+  st_drop_geometry() %>%
+  set_utf8()
+
+aantallen_overig <- aantallen_orig2 %>%
+  filter(!st_is(geom, type = "POINT")) %>%
+  st_drop_geometry() %>%
+  set_utf8()
+
+aantallen_orig <- bind_rows(aantallen_punt,
+                             aantallen_overig)
 
 aantallen <- aantallen_orig %>%
   mutate(jaar = as.numeric(format(datum, "%Y")),
