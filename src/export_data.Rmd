@@ -167,6 +167,7 @@ query_aantallen <- "select PG.name as soortgroep
     , O.sample_id
     , O.geom
     , O.sex as geslacht
+    , O.id as observation_id
     , ACT.i18n->>'name_nl' as activiteit
     , LS.i18n->>'name_nl' as levensstadium
     , O.number_min as aantal
@@ -198,7 +199,7 @@ Order by PG.name
 
 aantallen_orig <- st_read(dsn = con, query = query_aantallen) 
 
-aantallen_punt <- aantallen_orig2 %>%
+aantallen_punt <- aantallen_orig %>%
   filter(st_is(geom, type = "POINT")) 
 
 aantallen_punt <- aantallen_punt %>%
@@ -207,7 +208,7 @@ aantallen_punt <- aantallen_punt %>%
   st_drop_geometry() %>%
   set_utf8()
 
-aantallen_overig <- aantallen_orig2 %>%
+aantallen_overig <- aantallen_orig %>%
   filter(!st_is(geom, type = "POINT")) %>%
   st_drop_geometry() %>%
   set_utf8()
@@ -660,7 +661,7 @@ locatie_opm <- set_utf8(dbGetQuery(con, query_locatie_opm))
 
 dbDisconnect(con)
 
-write_vc(aantallen, "aantallen", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id"), strict = FALSE)
+write_vc(aantallen, "aantallen", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id"), strict = FALSE)
 write_vc(aantallen_planten, "aantallen_planten", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id"), strict = FALSE)
 write_vc(bezoeken, "bezoeken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id"), strict = FALSE)
 write_vc(werkpakketten, "werkpakketten", root = "../raw", sorting = c("meetnet", "werkpakket"), strict = FALSE)
