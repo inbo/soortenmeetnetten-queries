@@ -99,5 +99,44 @@ users_mil_domeinen <- locatie_users_mil_domeinen %>%
   arrange(achternaam)
 
 write.csv2(users_mil_domeinen, "processed/tellers_militaire_domeinen/tellers_militaire_domeinen.csv", row.names = FALSE)
-      
+ 
+
+
+##############################################################
+
+
+locatie_users <- read_vc("raw/locatie_users")
+locatie_users_reserve_orig <- read_vc("raw/locatie_users_reserve")
+users <- read_vc("raw/meetnetten_users")
+
+locatie_users_gereserveerd <- locatie_users %>%
+  filter(is_active) %>%
+  filter(meetnet !="Algemene Vlindermonitoring") %>%
+  mutate(tekst = str_c(meetnet, ": ", locatie)) %>%
+  group_by(first_name, last_name, email) %>%
+  summarise(locaties = str_c(unique(tekst), collapse = "; ")) %>%
+  ungroup() %>%
+  mutate(type = "gereserveerd")
+
+locatie_users_reserve <- locatie_users_reserve_orig %>%
+  filter(is_active) %>%
+  filter(interested) %>%
+  filter(meetnet !="Algemene Vlindermonitoring") %>%
+  mutate(tekst = str_c(meetnet, ": ", locatie)) %>%
+  group_by(first_name, last_name, email) %>%
+  summarise(locaties = str_c(unique(tekst), collapse = "; ")) %>%
+  ungroup() %>%
+  mutate(type = "reserve")
+
+users_distinct <- users %>%
+  distinct(first_name, last_name, adres, postcode, gemeente, email)
+
+
+locatie_users_all <- locatie_users_gereserveerd %>%
+  bind_rows(locatie_users_reserve) %>%
+  spread(key = type, value = locaties) %>%
+  left_join(users_distinct, by = c("first_name", "last_name", "email")) %>%
+  select(Voornaam = first_name, Achternaam = last_name, Adres = adres, Postcode = postcode, Gemeente = gemeente, "Locatie gereserveerd" = gereserveerd, "Locatie reserve" = reserve, Email = email)
+
+write.csv2(locatie_users_all, "processed/overzicht_tellers_versie2021-03-15.csv", row.names = FALSE, na = "")     
 
