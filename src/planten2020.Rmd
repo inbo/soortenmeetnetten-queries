@@ -26,7 +26,7 @@ data_ruw_2020 <- planten_2020_orig %>%
          naam_nl = ifelse(naam_lat == "Diphasiastrum tristachyum", "Kleine wolfsklauw", naam_nl)
          ) %>% 
   mutate(datum = ifelse(id == 205241481, "2020-06-15", datum))%>%
-  select(id, meetnet = naam_nl,  datum,  x, y, aantal, floroncode = Floroncode, typewaarneming, waarnemer = wnr, status, locatie_np = Locatie, ingevoerd = Meetnet, opm = bijzonderheden)%>%
+  select(id, meetnet = naam_nl,  datum, invoerdatum,  x, y, aantal, floroncode = Floroncode, typewaarneming, waarnemer = wnr, status, locatie_np = Locatie, ingevoerd = Meetnet, opm = bijzonderheden)%>%
   mutate(datum = as.Date(datum, format = "%Y-%m-%d"),
          jaar = as.numeric(format(as.Date(datum, format = "%Y-%m-%d"),"%Y")),
          uitvoerder = "vrijwilligers",
@@ -174,7 +174,7 @@ data_waarnemingen <- data_extern_locaties2 %>%
          schaal = ifelse(meetvariabele == "Aantal", "aantal (Floron)", "oppervlakte (Floron")) 
 
 aantallen_waarnemingen_mn <- data_waarnemingen %>%
-  filter(jaar == 2020) %>%
+  #filter(jaar == 2020) %>%
   filter(floroncode_ingevoerd == "Ja") %>%
   filter(!is.na(locatie)) %>%
   filter(!is.na(visit_id)) %>%
@@ -200,6 +200,33 @@ controle_bezoeken <- data_waarnemingen %>%
 
 write.csv2(controle_bezoeken, "../output/wnm_planten_zonderbezoeken_2020_versie2021-02-25.csv")
 ```
+
+## Data voor oude bezoeken
+
+```{r}
+
+bezoeken_locatie_incatief <- bezoeken_planten %>%
+  anti_join(locaties_planten_actief_sf, by = c("meetnet", "locatie")) %>%
+  rename(locatie_inactief = locatie, visit_id_locatie_inactief = visit_id)
+
+aantallen_planten_visit_id <- read_vc("aantallen_planten", "../raw") %>%
+  filter(validatie != -1) %>%
+  group_by(visit_id) %>%
+  summarise(puntlocaties_ingevoerd = n() > 0) %>%
+  ungroup()
+
+data_oude_bezoeken <- data_waarnemingen %>%
+  filter(jaar < 2020) %>%
+  filter(floroncode_ingevoerd == "Ja") %>% 
+  left_join(bezoeken_locatie_incatief, by = c("meetnet", "locatie_inactief", "datum")) %>%
+  left_join(aantallen_planten_visit_id, by = c("visit_id")) %>%
+  mutate(match_bezoek_mn = !is.na(visit_id) | !is.na(visit_id_locatie_inactief),
+         puntlocatie_ingevoerd = !is.na(puntlocaties_ingevoerd)) %>%
+  select(meetnet, locatie, locatie_inactief, locatie_np, id_wnm = id, visit_id, visit_id_locatie_inactief ,puntlocatie_ingevoerd,  match_bezoek_mn,  datum, invoerdatum, floroncode, x_coord, y_coord, waarnemer)
+
+write.csv2(data_oude_bezoeken, "../output/oude_bezoeken_migratie2021.csv")
+```
+
 
 ## Bezoeken zonder waarnemingen
 
