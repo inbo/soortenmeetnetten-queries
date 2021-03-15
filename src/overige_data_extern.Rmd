@@ -340,26 +340,22 @@ data_mollusken_locaties <- data_mollusken_by_meetnet %>%
 
 data_roestbruine_kniptor_2020 <- read.csv2("../data_extern/count_data/roestbruine_kniptor/RoestbrKniptor_wbe_2020.csv", stringsAsFactors = FALSE) %>%
   filter(lon != "onbekend") %>%
-  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, opmerking = bijzonderheden, uren_gevangen) %>%
   mutate(id = as.character(id),
          datum = as.Date(datum, format = "%d/%m/%Y"))
 
 data_roestbruine_kniptor_2019 <- read_sf("../data_extern/count_data/roestbruine_kniptor", "Roestbruine_kniptor_waarnemingen_2019") %>%
-    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, opmerking = bijzonderh) %>%
     mutate(id = as.character(id),
          datum = as.Date(datum, format = "%Y-%m-%d")) %>%
   st_drop_geometry()
 
 data_roestbruine_kniptor_2018 <- read_sf("../data_extern/count_data/roestbruine_kniptor", "Roestbruine kniptor waarnemingen export 2018-12") %>%
-    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, opmerking = bijzonderh) %>%
     mutate(id = as.character(id),
          datum = as.Date(datum, format = "%Y-%m-%d")) %>%
   st_drop_geometry()
 
-data_roestbruine_kniptor_2020 <- read.csv2("../data_extern/count_data/gerande_oeverspin/GerandeOeverspin_wbe_2020.csv") %>%
-    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
-    mutate(id = as.character(id),
-         datum = as.Date(datum, format = "%d/%m/%Y"))
 
 data_roestbruine_kniptor <- bind_rows(data_roestbruine_kniptor_2018,
                            data_roestbruine_kniptor_2019,
