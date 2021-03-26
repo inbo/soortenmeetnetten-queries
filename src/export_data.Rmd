@@ -291,10 +291,10 @@ aantallen_planten <- aantallen_planten %>%
   select(-geom_text, -track_geom_text)
 ```
 
-### Tracks planten
+### Tracks
 
 ```{r}
-query_tracks_planten <- "select PG.name as soortgroep
+query_tracks <- "select PG.name as soortgroep
     , P.name as meetnet
     , L.name as locatie
     , PR.i18n->>'name_nl' as protocol
@@ -309,14 +309,24 @@ query_tracks_planten <- "select PG.name as soortgroep
     inner join protocols_protocol PR on PR.id = V.protocol_id
     inner join Locations_location L ON L.ID = V.location_ID
 where 1=1
-    and PG.name = 'planten'
 Order by PG.name
     , P.name
     , L.Name
     , V.start_date"
 
-tracks_planten <- st_read(dsn = con, query = query_tracks_planten) %>%
-  filter(!is.na(track_geom_text))
+tracks <- st_read(dsn = con, query = query_tracks) %>%
+  filter(!is.na(track_geom_text)) %>%
+  filter(validatie != "-1")
+
+tracks_UTF8 <- set_utf8(tracks %>%
+                          st_drop_geometry())
+
+tracks <- tracks %>%
+  select(visit_id) %>%
+  left_join(tracks_UTF8, by = "visit_id")
+
+tracks_planten <- tracks %>%
+  filter(soortgroep == "planten")
 
 ```
 
@@ -679,6 +689,7 @@ st_write(aantallen_planten_puntlocaties, "../raw/planten_puntlocaties.gpkg", lay
 st_write(tracks_planten, "../raw/planten_puntlocaties.gpkg", layer = "tracks", driver = "GPKG", delete_layer = TRUE)
 st_write(aantallen_planten_puntlocaties,  "../raw/planten_puntlocaties", layer = "planten_puntlocaties", driver = "ESRI Shapefile", delete_layer = TRUE)
 st_write(tracks_planten,  "../raw/planten_tracks", layer = "planten_tracks", driver = "ESRI Shapefile", delete_layer = TRUE)
+st_write(tracks,  "../raw/tracks.gpkg", layer = "tracks", driver = "gpkg", delete_layer = TRUE)
 write_vc(aantallen_planten2, "aantallen_planten_FP", root = "../raw", sorting = c("meetnet", "locatie", "visit_id", "sample_id"), strict = FALSE)
 
 version <- data.frame(date_export = Sys.Date())
