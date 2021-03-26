@@ -527,6 +527,7 @@ select PG.name as soortgroep
 , u.last_name
 , u.email
 , u.is_staff
+, u.reference_obs
 , pb.interested
 from projects_projectlocation pl
 left outer join Projects_project P on P.ID = pl.project_ID
