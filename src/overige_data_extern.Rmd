@@ -182,6 +182,8 @@ visit_ids <- data_extern %>%
 data_extern_burchten <- data_extern %>%
   left_join(visit_ids, by = c("meetnet", "locatie", "datum")) %>%
   select(meetnet, protocol, locatie, visit_id, datum, everything())
+
+
 ```
 
 # Gerande oeverspin
@@ -394,7 +396,7 @@ data_roestbruine_kniptor <- data_roestbruine_kniptor_sf %>%
 # Export
 
 ```{r}
-write_vc(data_extern_burchten, "data_burchten", "../processed")
+write_vc(data_extern_burchten, "data_burchten", "../processed", strict = FALSE)
 write_vc(data_oeverspinnen, "data_oeverspinnen", "../processed", strict = FALSE)
 write_vc(data_mollusken_locaties, "data_mollusken", "../processed", strict = FALSE)
 write_vc(data_roestbruine_kniptor, "data_roestbruine_kniptor", "../processed", strict = FALSE)
