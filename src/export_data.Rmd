@@ -200,9 +200,10 @@ Order by PG.name
 aantallen_orig <- st_read(dsn = con, query = query_aantallen) 
 
 aantallen_punt <- aantallen_orig %>%
-  filter(st_is(geom, type = "POINT")) 
+  filter(st_is(geom, type = "POINT")) %>%
+  st_transform(31370)
 
-aantallen_punt <- aantallen_punt %>%
+aantallen_punt <- aantallen_punt  %>%
   mutate(x = st_coordinates(aantallen_punt)[, 1],
          y = st_coordinates(aantallen_punt)[, 2]) %>%
   st_drop_geometry() %>%
@@ -509,6 +510,7 @@ select pg.name as soortgroep
   , u.address as adres
   , u.city as gemeente
   , u.postalcode as postcode
+  , u.reference_obs
   , pu.role
   from projects_projectuser pu
     inner join projects_project p on p.id = pu.project_id
@@ -527,7 +529,6 @@ select PG.name as soortgroep
 , u.last_name
 , u.email
 , u.is_staff
-, u.reference_obs
 , pb.interested
 from projects_projectlocation pl
 left outer join Projects_project P on P.ID = pl.project_ID
