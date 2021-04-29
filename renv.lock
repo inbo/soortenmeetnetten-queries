@@ -407,10 +407,10 @@
     },
     "leaflet": {
       "Package": "leaflet",
-      "Version": "2.0.3",
+      "Version": "2.0.4.1",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "3f3f5e5603fc791dfb77279ad84cc711"
+      "Hash": "e3d73becdeb92754d27172d278cbf61d"
     },
     "leaflet.providers": {
       "Package": "leaflet.providers",
