@@ -9,6 +9,7 @@ library(sf)
 library(git2rdata)
 library(tidyverse)
 library(units)
+library(readxl)
 ```
 
 # Hamsterburchten
@@ -246,29 +247,38 @@ data_oeverspinnen <- data_oeverspinnen_sf %>%
 
 ```{r}
 data_mollusken_2020 <- read.csv2("../data_extern/count_data/mollusken/P-CO-000385_Mollusken_wbe_2020_Dump20201201__ALLES_UNIEK.csv", stringsAsFactors = FALSE) %>%
-  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, precisie, opm = bijzonderheden) %>%
   mutate(id = as.character(id),
          datum = as.Date(datum, format = "%Y-%m-%d"),
          naam_nl = ifelse(naam_nl == "Zegge-korfslak", "Zeggekorfslak", naam_nl))
 
 data_mollusken_2019 <- read_sf(dsn = "../data_extern/count_data/mollusken", layer = "Export_waarnemingen_2019_molluskenmeetnetten") %>%
   st_drop_geometry() %>%
-  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, precisie, opm = bijzonderh) %>%
   mutate(id = as.character(id),
          datum = as.Date(datum, format = "%d-%m-%Y"))
 
 data_mollusken_2016_2018 <- read_sf(dsn = "../data_extern/count_data/mollusken", layer = "Mollusken 2016-2018-10-30 export wnbe") %>%
   st_drop_geometry() %>%
-  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr) %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, precisie, opm = bijzonderh) %>%
   mutate(id = as.character(id),
          datum = as.Date(datum, format = "%Y-%m-%d"))
 
-data_mollusken <- bind_rows(data_mollusken_2016_2018,
+data_mollusken_ps_bs <- bind_rows(data_mollusken_2016_2018,
                            data_mollusken_2019,
                            data_mollusken_2020) %>%
-  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld"),
-         meetnet = naam_nl) %>%
+  filter(naam_nl %in% c("Platte schijfhoren", "Bataafse stroommossel")) %>%
   filter(!is.na(x))
+
+data_mollusken <- read_excel("../data_extern/count_data/mollusken/INBODATAVR-277_divers_wbe_VL_Dump20210524.xlsx") %>%
+  bind_rows(read_excel("../data_extern/count_data/mollusken/INBODATAVR-277_divers_wbe_VL_Dump20210524_bijkomend.xlsx")) %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, precisie, opm = bijzonderheden) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d"),
+         naam_nl = ifelse(naam_nl == "Zegge-korfslak", "Zeggekorfslak", naam_nl)) %>%
+  bind_rows(data_mollusken_ps_bs) %>%
+  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld"),
+         meetnet = naam_nl)
 
 # locaties_mollusken_actief_sf <- read_sf("../raw/meetnetten_locaties.gpkg", "locaties") %>%
 #   filter(soortgroep == "mollusken") %>%
@@ -303,7 +313,7 @@ data_mollusken_by_meetnet <- data_mollusken %>%
   group_by(meetnet) %>%
   nest()
 
-closest_location_actief <- function(meetnet_select, observations) {
+closest_location <- function(meetnet_select, observations) {
   
   locations_meetnet <- pot_leefgebied_mollusken %>%
     filter(meetnet == meetnet_select )
