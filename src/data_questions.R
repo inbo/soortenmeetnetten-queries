@@ -88,20 +88,20 @@ locatie_users_mil_domeinen <- locatie_users %>%
   inner_join(locaties_mil_domeinen, by = c("meetnet", "locatie"))
 
 users_mil_domeinen <- locatie_users_mil_domeinen %>%
-  group_by(first_name, last_name, email, meetnet) %>%
+  group_by(first_name, last_name, email, meetnet, domein_id) %>%
   mutate(locaties = str_c(locatie, " (", type_teller,")", collapse = ", ")) %>%
   ungroup() %>%
   mutate(locaties_meetnet = str_c(meetnet, ": ", locaties)) %>%
-  group_by(first_name, last_name, email, postcode, gemeente, adres) %>%
+  group_by(first_name, last_name, email, postcode, gemeente, adres, domein_id) %>%
   summarise(meetnetten = str_c(unique(meetnet), collapse = ", "),
             locaties = str_c(unique(locaties_meetnet), collapse = "; ")) %>%
   ungroup() %>%
   rename(voornaam = first_name, achternaam = last_name) %>%
-  arrange(achternaam)
+  select(domein_id, everything()) %>%
+  arrange(domein_id, achternaam)
 
 write.csv2(users_mil_domeinen, "processed/tellers_militaire_domeinen/tellers_militaire_domeinen.csv", row.names = FALSE)
  
-
 
 ##############################################################
 
@@ -346,7 +346,11 @@ write.csv2(locaties_vlinders, "output/vlindermeetnetten_transecten.csv", row.nam
 
 ######################################
 
+data_hamster <- read_vc("processed/data_burchten") %>%
+  filter(meetnet == "Hamster") %>%
+  select(meetnet, protocol, locatie, datum, soort_wet, soort_nl, aantal, x, y) %>%
+  arrange(datum)
 
-
+write_csv2(data_hamster, "output/meetnetten_burchten_hamster_2016_2020.csv")
 
 
