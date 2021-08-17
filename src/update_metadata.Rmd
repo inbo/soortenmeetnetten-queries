@@ -45,12 +45,18 @@ meetnetten_n_locaties <- locaties %>%
 
 # telperiodes
 telperiodes_taak <- taken %>%
-  filter(jaar == 2020) %>%
-  select(soortgroep, meetnet, protocol, jaar, taak, taak_start, taak_end) %>%
-  unique()
+  filter(jaar == 2021) %>%
+  select(soortgroep, meetnet, protocol, jaar, taak_start, taak_end) %>%
+  unique() %>%
+  group_by(meetnet, protocol) %>%
+  mutate(periode = rank(taak_start)) %>%
+  ungroup() %>%
+  mutate(generatie = ifelse(meetnet %in% c("Argusvlinder", "Klaverblauwtje", "Bruin dikkopje"),
+                            str_c("generatie", periode),
+                            "generatie1"))
 
 telperiodes_taak <- telperiodes_taak %>%
-  group_by(soortgroep, meetnet, protocol) %>%
+  group_by(soortgroep, meetnet, protocol, generatie) %>%
   summarise(start_telperiode = min(taak_start),
             einde_telperiode = max(taak_end)) %>%
   ungroup()
@@ -68,7 +74,8 @@ telperiodes_wp <- werkpakketten %>%
 telperiodes <- telperiodes_taak %>%
   bind_rows(telperiodes_wp) %>%
   arrange(meetnet, protocol) %>%
-  mutate(protocol = ifelse(meetnet == "Grote weerschijnvlinder", "Vlinders - Gebiedstelling", protocol))
+  mutate(protocol = ifelse(meetnet == "Grote weerschijnvlinder", "Vlinders - Gebiedstelling", protocol),
+         generatie = ifelse(is.na(generatie), "generatie1", generatie))
 
 ```
 
@@ -77,7 +84,7 @@ telperiodes <- telperiodes_taak %>%
 ```{r}
 metadata <- metadata_file %>%
   select(-begin_telperiode, - einde_telperiode) %>%
-  left_join(telperiodes, by = c("soortgroep", "meetnet", "protocol")) %>%
+  left_join(telperiodes, by = c("soortgroep", "meetnet", "protocol", "generatie")) %>%
   left_join(meetnetten_n_locaties, by = "meetnet")
 ```
 
