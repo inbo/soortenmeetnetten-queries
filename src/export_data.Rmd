@@ -665,6 +665,8 @@ query_locatie_opm <- "SELECT
     INNER JOIN projects_projectgroup PG on PG.id = P.group_id;"
 
 locatie_opm <- set_utf8(dbGetQuery(con, query_locatie_opm))
+
+# locatie_opm <- dbGetQuery(con, query_locatie_opm)
 ```
 
 ## Write raw data

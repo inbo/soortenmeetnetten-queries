@@ -45,7 +45,7 @@ libellen	Vroege glazenmaker	Libellen - Transect	Steekproef	3	generatie1	2	2017	V
 mollusken	Bataafse stroommossel		Inhaalslag	12	generatie1	1	2017	EPS	NA	NA	1	8
 mollusken	Nauwe korfslak	Nauwe korfslak - Inhaalslag	Inhaalslag	12	generatie1	1	2017	EPS	NA	NA	1	14
 mollusken	Platte schijfhoren		Inhaalslag	12	generatie1	1	2017	EPS	NA	NA	1	4
-mollusken	Zeggekorfslak	Zeggekorfslak - Inhaalslag	Inhaalslag	12	generatie1	1	2017	EPS	NA	NA	1	259
+mollusken	Zeggekorfslak	Zeggekorfslak - Inhaalslag	Inhaalslag	12	generatie1	1	2017	EPS	NA	NA	1	278
 overige	Gerande oeverspin	Gerande oeverspin - Inhaalslag	Inhaalslag	6	generatie1	1	2016	VPS	18383	18474	1	117
 overige	Lentevuurspin	Lentevuurspin - Gebiedstelling	Integraal	1	generatie1	1	2016	VPS	18484	18525	1	6
 overige	Lentevuurspin	Lentevuurspin - Transect	Integraal	1	generatie1	1	2016	VPS	18484	18525	1	6
@@ -55,7 +55,7 @@ overige	Vliegend hert	Vliegend hert - Inhaalslag	Inhaalslag	6	generatie1	6	2017	
 overige	Vliegend hert	Vliegend hert - Transecten	Steekproef	1	generatie1	6	2019	EPS	NA	NA	1	19
 overige	Zadelsprinkhaan	Sprinkhanen - Gebiedstelling	Integraal	1	generatie1	2	2016	VPS	18499	18520	1	6
 planten	Bleekgeel blaasjeskruid	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	NA	NA	NA	NA
-planten	Driekantige bies	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18414	18535	1	12
+planten	Driekantige bies	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18414	18535	1	11
 planten	Duingentiaan	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18444	18535	1	13
 planten	Fijn goudscherm	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18444	18535	1	1
 planten	Gesteelde zoutmelde	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18444	18535	1	2
@@ -79,6 +79,11 @@ planten	Veenmosorchis	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2
 planten	Weegbreefonteinkruid	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18414	18474	1	12
 planten	Welriekende nachtorchis	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18414	18474	1	14
 planten	Witte waterranonkel	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18383	18443	1	49
+vleermuizen	Gewone Grootoorvleermuis	Vleermuizen - Uitvliegtelling	Integraal	1	generatie1	2	2021	EPS	18779	18839	1	5
+vleermuizen	Grijze Grootoorvleermuis	Vleermuizen - Uitvliegtelling	Integraal	1	generatie1	2	2021	EPS	18777	18839	1	6
+vleermuizen	Ingekorven Vleermuis	Vleermuizen - Uitvliegtelling	Integraal	1	generatie1	2	2021	EPS	NA	NA	1	9
+vleermuizen	Ingekorven Vleermuis	Vleermuizen - Zoldertelling	Integraal	1	generatie1	1	2021	EPS	18823	18849	1	9
+vleermuizen	Laatvlieger	Vleermuizen - Uitvliegtelling	Integraal	1	generatie1	2	2021	EPS	18779	18841	1	16
 vogels	Algemene Broedvogelmonitoring (ABV)	Algemene Broedvogelmonitoring	Steekproef	3	generatie1	3	2007	EPS	18322	18459	1	1104
 zoogdieren	Das	Burchtentelling das	Integraal	3	generatie1	1	2016	VPS	NA	NA	NA	NA
 zoogdieren	Hamster	Burchtentelling hamster	Integraal	1	generatie1	1	2016	EPS	NA	NA	1	1
