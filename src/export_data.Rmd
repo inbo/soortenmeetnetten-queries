@@ -139,7 +139,7 @@ sublocations_transecten <- locaties %>%
   filter(locatie_type == "sublocatie") %>%
   select(-geclaimd_door) %>%
   arrange(soortgroep, meetnet, locatie) %>%
-  filter((substr(geom_text, 1, 4) == "LINE") | (substr(geom_text, 1, 9) == "MULTILINE")) %>%
+  mutate(sectie_lijn = (substr(geom_text, 1, 4) == "LINE") | (substr(geom_text, 1, 9) == "MULTILINE")) %>%
   rename(sublocatie = locatie, locatie_id = parent_id) %>%
   left_join(namen_hoofdlocaties, by = c("meetnet", "locatie_id")) %>%
   arrange(soortgroep, meetnet, locatie, sublocatie) %>%
