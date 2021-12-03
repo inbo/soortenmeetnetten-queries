@@ -30,7 +30,7 @@ dagvlinders	Moerasparelmoervlinder	Vlinders - Transecten	Integraal	1	generatie1	
 dagvlinders	Oranje zandoogje	Vlinders - Transecten	Steekproef	3	generatie1	3	2017	VPS	18818	18854	0	29
 dagvlinders	Oranje zandoogje	Vlinders - Transecten	Steekproef	3	generatie1	3	2017	VPS	18818	18854	1	30
 dagvlinders	Veldparelmoervlinder	Vlinders - Transecten	Integraal	1	generatie1	3	2016	VPS	18748	18778	1	11
-libellen	Beekrombout	Libellen - Larvenhuidjes Beekrombout	Integraal	1	generatie1	3	2018	VPS	18383	18413	1	17
+libellen	Beekrombout	Libellen - Larvenhuidjes Beekrombout	Integraal	1	generatie1	3	2018	VPS	18748	18778	1	17
 libellen	Bosbeekjuffer	Libellen - Transect	Steekproef	3	generatie1	3	2018	VPS	18767	18859	1	30
 libellen	Gevlekte witsnuitlibel	Libellen - Populatietelling per locatie	Integraal	1	generatie1	2	2016	EPS	18767	18808	1	24
 libellen	Hoogveenglanslibel	Libellen - Populatietelling per locatie	Integraal	1	generatie1	2	2018	VPS	18767	18839	1	12
@@ -45,48 +45,50 @@ libellen	Vroege glazenmaker	Libellen - Transect	Steekproef	3	generatie1	2	2017	V
 mollusken	Bataafse stroommossel		Inhaalslag	12	generatie1	1	2017	EPS	NA	NA	1	8
 mollusken	Nauwe korfslak	Nauwe korfslak - Inhaalslag	Inhaalslag	12	generatie1	1	2017	EPS	NA	NA	1	14
 mollusken	Platte schijfhoren		Inhaalslag	12	generatie1	1	2017	EPS	NA	NA	1	4
-mollusken	Zeggekorfslak	Zeggekorfslak - Inhaalslag	Inhaalslag	12	generatie1	1	2017	EPS	NA	NA	1	278
-overige	Gerande oeverspin	Gerande oeverspin - Inhaalslag	Inhaalslag	6	generatie1	1	2016	VPS	18383	18474	1	117
-overige	Lentevuurspin	Lentevuurspin - Gebiedstelling	Integraal	1	generatie1	1	2016	VPS	18484	18525	1	6
-overige	Lentevuurspin	Lentevuurspin - Transect	Integraal	1	generatie1	1	2016	VPS	18484	18525	1	6
-overige	Roestbruine kniptor	Kevers - Feromoonval	Inhaalslag	6	generatie1	1	2018	VPS	18414	18505	1	67
-overige	Schavertje	Sprinkhanen - Wegvangst	Integraal	1	generatie1	1	2017	VPS	18475	18535	1	4
+mollusken	Zeggekorfslak	Zeggekorfslak - Inhaalslag	Inhaalslag	12	generatie1	1	2017	EPS	18628	18961	1	278
+mollusken	Zeggekorfslak	Zeggekorfslak - Inhaalslag	Inhaalslag	12	generatie1	1	2017	EPS	18628	18961	1	278
+overige	Gerande oeverspin	Gerande oeverspin - Inhaalslag	Inhaalslag	6	generatie1	1	2016	VPS	18748	18839	1	117
+overige	Lentevuurspin	Lentevuurspin - Gebiedstelling	Integraal	1	generatie1	1	2016	VPS	18849	18890	1	6
+overige	Lentevuurspin	Lentevuurspin - Transect	Integraal	1	generatie1	1	2016	VPS	18849	18890	1	6
+overige	Roestbruine kniptor	Kevers - Feromoonval	Inhaalslag	6	generatie1	1	2018	VPS	18779	18870	1	67
+overige	Schavertje	Sprinkhanen - Wegvangst	Integraal	1	generatie1	1	2017	VPS	18840	18900	1	4
 overige	Vliegend hert	Vliegend hert - Inhaalslag	Inhaalslag	6	generatie1	6	2017	EPS	NA	NA	1	19
 overige	Vliegend hert	Vliegend hert - Transecten	Steekproef	1	generatie1	6	2019	EPS	NA	NA	1	19
-overige	Zadelsprinkhaan	Sprinkhanen - Gebiedstelling	Integraal	1	generatie1	2	2016	VPS	18499	18520	1	6
+overige	Zadelsprinkhaan	Sprinkhanen - Gebiedstelling	Integraal	1	generatie1	2	2016	VPS	18864	18885	1	6
 planten	Bleekgeel blaasjeskruid	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	NA	NA	NA	NA
-planten	Driekantige bies	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18414	18535	1	11
-planten	Duingentiaan	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18444	18535	1	13
-planten	Fijn goudscherm	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18444	18535	1	1
-planten	Gesteelde zoutmelde	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18444	18535	1	2
-planten	Grote bremraap	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18383	18505	1	35
+planten	Driekantige bies	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18779	18900	1	11
+planten	Duingentiaan	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18809	18900	1	13
+planten	Fijn goudscherm	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	NA	NA	1	1
+planten	Gesteelde zoutmelde	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18809	18900	1	2
+planten	Grote bremraap	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18748	18870	1	35
 planten	Harlekijn	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	NA	NA	1	3
-planten	Honingorchis	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18414	18474	1	13
-planten	Kleine schorseneer	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18383	18443	1	6
+planten	Honingorchis	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18779	18839	1	13
+planten	Kleine schorseneer	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18748	18808	1	6
 planten	Kleine wolfsklauw	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	NA	NA	1	2
-planten	Klimopklokje	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18414	18535	1	8
+planten	Klimopklokje	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18779	18900	1	8
 planten	Koprus	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	NA	NA	1	1
-planten	Krabbenscheer	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18475	18535	1	3
-planten	Moerassmele	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18444	18505	1	3
-planten	Plat fonteinkruid	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18444	18505	1	2
-planten	Polei	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18444	18535	1	2
-planten	Purperorchis	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18383	18443	1	11
-planten	Ronde zegge	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18383	18443	1	7
-planten	Slank wollegras	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18383	18474	1	4
-planten	Spits fonteinkruid	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18414	18505	1	11
-planten	Stekende bies	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18414	18505	1	3
+planten	Krabbenscheer	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	NA	NA	1	3
+planten	Moerassmele	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18809	18870	1	3
+planten	Plat fonteinkruid	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18809	18870	1	2
+planten	Polei	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	NA	NA	1	2
+planten	Purperorchis	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18748	18808	1	11
+planten	Ronde zegge	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18748	18808	1	7
+planten	Slank wollegras	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18748	18839	1	4
+planten	Spits fonteinkruid	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18779	18870	1	11
+planten	Stekende bies	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18779	18870	1	3
 planten	Veenmosorchis	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	NA	NA	1	1
-planten	Weegbreefonteinkruid	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18414	18474	1	12
-planten	Welriekende nachtorchis	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18414	18474	1	14
-planten	Witte waterranonkel	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18383	18443	1	49
+planten	Weegbreefonteinkruid	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18779	18839	1	12
+planten	Welriekende nachtorchis	Vaatplanten - Aantal individuen	Integraal	3	generatie1	1	2016	VPS	18779	18839	1	14
+planten	Witte waterranonkel	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	18748	18808	1	49
 vleermuizen	Gewone Grootoorvleermuis	Vleermuizen - Uitvliegtelling	Integraal	1	generatie1	2	2021	EPS	18779	18839	1	5
 vleermuizen	Grijze Grootoorvleermuis	Vleermuizen - Uitvliegtelling	Integraal	1	generatie1	2	2021	EPS	18777	18839	1	6
 vleermuizen	Ingekorven Vleermuis	Vleermuizen - Uitvliegtelling	Integraal	1	generatie1	2	2021	EPS	NA	NA	1	9
 vleermuizen	Ingekorven Vleermuis	Vleermuizen - Zoldertelling	Integraal	1	generatie1	1	2021	EPS	18823	18849	1	9
 vleermuizen	Laatvlieger	Vleermuizen - Uitvliegtelling	Integraal	1	generatie1	2	2021	EPS	18779	18841	1	16
-vogels	Algemene Broedvogelmonitoring (ABV)	Algemene Broedvogelmonitoring	Steekproef	3	generatie1	3	2007	EPS	18322	18459	1	1104
+vogels	Algemene Broedvogelmonitoring (ABV)	Algemene Broedvogelmonitoring	Steekproef	3	generatie1	3	2007	EPS	18687	18824	1	1104
+vogels	Algemene Broedvogelmonitoring (ABV)	Algemene Broedvogelmonitoring	Steekproef	3	generatie1	3	2007	EPS	18687	18824	1	1104
 zoogdieren	Das	Burchtentelling das	Integraal	3	generatie1	1	2016	VPS	NA	NA	NA	NA
 zoogdieren	Hamster	Burchtentelling hamster	Integraal	1	generatie1	1	2016	EPS	NA	NA	1	1
 zoogdieren	Hazelmuis	Hazelmuis - Transect	Integraal	1	generatie1	2	2016	EPS	NA	NA	1	3
 zoogdieren	Hazelmuis - Nestbuizen	Hazelmuis - Nestbuizen	Integraal	1	generatie1	2	2020	EPS	NA	NA	1	17
-zoogdieren	Otter	Otter	Inhaalslag	12	generatie1	1	2018	EPS	NA	NA	1	17
+zoogdieren	Otter	Otter	Inhaalslag	12	generatie1	1	2018	EPS	NA	NA	1	24
