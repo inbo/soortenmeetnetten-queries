@@ -189,6 +189,8 @@ where 1=1
     and P.name <> 'Algemene Vlindermonitoring'
     and SA.notes <> 'dummy sample'
     and PG.name <> 'planten'
+    and P.name <> 'Gentiaanblauwtje'
+    and V.validation_status <> -1 --afgekeurd
 Order by PG.name
     , P.name
     , L.Name
@@ -291,6 +293,128 @@ aantallen_planten <- aantallen_planten %>%
   st_drop_geometry() %>%
   select(-geom_text, -track_geom_text)
 ```
+
+
+```{r}
+query_aantallen_gb <- "select PG.name as soortgroep
+    , P.name as meetnet
+    , L.name as locatie
+    , L1.name as sublocatie
+    , PR.i18n->>'name_nl' as protocol
+    , V.id as visit_id
+    , V.start_date as datum
+    , SA.Not_Counted as niet_geteld
+    , SA.is_complete as checklist
+    , SA.Notes as opmerkingen
+    , O.species_ID
+    , SP.i18n->>'name_nl' as soort_nl
+    , SP.scientific_name as soort_wet
+    , PS.is_primary as primaire_soort
+    , O.sample_id
+    , O.sex as geslacht
+    , O.id as observation_id
+    , ACT.i18n->>'name_nl' as activiteit
+    , LS.i18n->>'name_nl' as levensstadium
+    , plant.value as Plant
+    , stengel.value as Stengel
+    , Knop.value as Knop
+    , O.number_min as aantal
+ from Projects_project P
+    inner join projects_projectgroup PG on PG.id = P.group_id
+    inner join fieldwork_visit V on V.project_ID = P.ID
+    left Outer join protocols_protocol PR on PR.id = V.protocol_id
+    left outer join fieldwork_sample SA on SA.visit_ID = V.ID
+    left outer join fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join Species_species SP on SP.ID = O.species_id
+    left outer join species_activity ACT on ACT.id = O.activity_id
+    left outer join species_lifestage LS on LS.id = O.life_stage_id
+    left outer join Locations_location L ON L.ID = V.location_ID
+    left outer Join Locations_location L1 on L1.ID = SA.location_id
+    left outer join accounts_user U on U.ID = V.user_id
+    left outer join projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+    left outer join (select OV.object_ID, OV.value
+                    from fieldwork_observationvalue OV 
+                    where OV.attribute_ID = 43)plant on plant.object_ID = O.ID
+    left outer join (select OV.object_ID, OV.value
+                    from fieldwork_observationvalue OV 
+                    where OV.attribute_ID in (44,66))stengel on stengel.object_ID = O.ID
+    left outer join (select OV.object_ID, OV.value
+                    from fieldwork_observationvalue OV 
+                    where OV.attribute_ID in (45,67))knop on knop.object_ID = O.ID
+where 1=1
+    and P.name = 'Gentiaanblauwtje'
+    and V.validation_status <> -1 --afgekeurd
+Order by PG.name
+    , P.name
+    , L.Name
+    , V.start_date
+    , L1.Name"
+
+
+query_gentiaanblauwtje <-  "select L.name as Locatie
+    , V.ID as visit_id
+    , V.start_date as Datum
+    , case when V.status = 1 then 'veldwerk is zonder problemen verlopen'
+	when V.status = -1 then 'weersomstandigheden waren ongunstig'
+	when V.status = -2 then 'telmethode uit handleiding niet gevolgd'
+	when V.status = -3 then 'geen veldwerk mogelijk - locatie ontoegankelijk'
+	when V.status = -4 then 'geen veldwerk mogelijk - locatie is ongeschikt voor de soort '
+	else 'onbekend' end as Omstandigheden
+    , ARRAY_TO_STRING(ARRAY[U.first_name, U.last_name], ' ') AS Medewerker
+    , tmp.WPName as Werkpakket
+    , tmp.taskName as Taak
+    , SA.ID as sample_ID
+    , regexp_replace(V.Notes, E'[\\n\\r]+', ' ', 'g' ) as Opmerkingen
+    , SP.i18n->>'name_nl' as Soort  
+    , plant.value as Plant
+    , stengel.value as Stengel
+    , Knop.value as Knop
+    --, O.ID
+    , O.number_min as Aantal
+    , LS.i18n->>'name_nl' as Levensstadium
+ from Projects_project P 
+    inner join Fieldwork_visit V on V.project_ID = P.ID
+    --get task context for visit when available
+    left outer join (select V.ID as VisitID
+                        , WP.ID as WorkpackageID
+                        , WP.name as WPName
+                        , T.ID As TaskID
+                        , T.name as TaskName
+                        from Projects_project P
+                                    INNER join Projects_workpackage WP on WP.project_ID = P.ID
+                                    INNER join Projects_task T on T.wp_ID = WP.ID
+                                    INNER join Fieldwork_visit V on V.task_ID = T.ID
+    ) tmp on tmp.visitid = V.id
+    left outer join fieldwork_sample SA on SA.visit_ID = V.ID
+    --left outer join fieldwork_samplevalue SAV on SAV.object_ID = SA.ID
+    left outer join fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join (select OV.object_ID, OV.value
+                    from fieldwork_observationvalue OV 
+                    where OV.attribute_ID = 43)plant on plant.object_ID = O.ID
+    left outer join (select OV.object_ID, OV.value
+                    from fieldwork_observationvalue OV 
+                    where OV.attribute_ID in (44,66))stengel on stengel.object_ID = O.ID
+    left outer join (select OV.object_ID, OV.value
+                    from fieldwork_observationvalue OV 
+                    where OV.attribute_ID in (45,67))knop on knop.object_ID = O.ID
+    left outer join Species_species SP on SP.ID = O.species_id
+    left outer join species_activity ACT on ACT.id = O.activity_id
+    left outer join species_lifestage LS on LS.id = O.life_stage_id
+    LEFT OUTER join Locations_location L ON L.ID = V.location_ID
+    left outer JOIN accounts_user U on U.ID = V.user_id
+
+where 1=1
+    and P.name = 'Gentiaanblauwtje'
+    and V.validation_status <> -1 --afgekeurd
+Order by L.Name
+    , V.start_date
+    , O.ID
+    --, A.name_nl"
+
+aantal_gentiaanblauwtje <- set_utf8(dbGetQuery(con, query_aantallen_gb)) %>%
+  filter(!is.na(soort_nl))
+```
+
 
 ### Tracks
 
@@ -430,8 +554,7 @@ werkpakketten <- werkpakketten_orig %>%
   mutate(doy_min = as.numeric(format(wp_start, "%j")),
          doy_max = as.numeric(format(wp_end, "%j")),
          doy_mid = doy_min + round((doy_max - doy_min)/2, 0),
-         jaar= as.numeric((format(wp_start, "%Y")))) %>%
-  filter(jaar == 2020)
+         jaar= as.numeric((format(wp_start, "%Y"))))
 
 query_werkpakket_locaties <- "
   select P.Name as meetnet
@@ -676,6 +799,7 @@ locatie_opm <- set_utf8(dbGetQuery(con, query_locatie_opm))
 dbDisconnect(con)
 
 write_vc(aantallen, "aantallen", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id"), strict = FALSE)
+write_vc(aantal_gentiaanblauwtje, "aantallen_gentiaanblauwtje", root = "../raw", sorting = c("locatie", "visit_id", "sample_id", "plant", "stengel", "knop"), strict = FALSE)
 write_vc(aantallen_planten, "aantallen_planten", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id"), strict = FALSE)
 write_vc(bezoeken, "bezoeken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id"), strict = FALSE)
 write_vc(werkpakketten, "werkpakketten", root = "../raw", sorting = c("meetnet", "werkpakket"), strict = FALSE)
