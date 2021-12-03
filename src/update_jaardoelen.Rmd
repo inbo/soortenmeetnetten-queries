@@ -10,7 +10,7 @@ library(tidyverse)
 
 
 ```{r}
-jaardoelen <- read.csv2("../data_extern/monitoring_targets/jaardoelen_2020.csv", stringsAsFactors = FALSE)
+jaardoelen <- read.csv2("../data_extern/monitoring_targets/jaardoelen.csv", stringsAsFactors = FALSE)
 ```
 
 ```{r}
