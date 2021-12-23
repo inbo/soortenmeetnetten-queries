@@ -2,6 +2,12 @@ library(git2rdata)
 library(tidyverse)
 library(sf)
 library(lubridate)
+library(n2khab)
+
+# remotes::install_github("inbo/n2khab",
+#                         build_vignettes = TRUE,
+#                         upgrade = TRUE)
+source("../soortenmeetnetten-analysis/src/functions_smp.r")
 
 ######################################################################
 
@@ -61,18 +67,21 @@ write.csv2(tellers_n_dagen_totaal, "processed/vrijwilligers_dagen_totaal.csv", r
 militaire_domeinen <- read_sf(dsn = "gis/militaire_domeinen", layer = "MilitaireDomeinen_BeheerANB_DissolveWGS84") %>%
   select(domein_id =DomeinID)
 
+militaire_domeinen_2 <- militaire_domeinen %>%
+  st_transform(31370)
+
 locaties <- read_sf(dsn = "raw/meetnetten_locaties.gpkg", "locaties")
 
 tellers_info <- read_vc(root = "raw", "meetnetten_users")   
 
 locaties_mil_domeinen <- locaties %>%
+  st_transform(31370) %>%
   filter(is_active == TRUE) %>%
   filter(locatie_type == "locatie") %>%
-  st_join(militaire_domeinen) %>%
+  st_join(militaire_domeinen_2) %>%
   filter(!is.na(domein_id)) %>%
   select(meetnet, locatie, domein_id, geclaimd_door) %>%
   st_drop_geometry()
-
 
 locatie_users_claim <- read_vc(root = "raw", "locatie_users") %>%
   mutate(type_teller = "geclaimd")
@@ -353,4 +362,61 @@ data_hamster <- read_vc("processed/data_burchten") %>%
 
 write_csv2(data_hamster, "output/meetnetten_burchten_hamster_2016_2020.csv")
 
+########################################
 
+locaties_boomkikker <- get_locations_smp() %>%
+  filter(meetnet == "Boomkikker") %>%
+  select(meetnet, locatie, is_active, is_sample) %>% 
+  st_transform(31370)
+
+locaties_boomkikker <- locaties_boomkikker %>%
+  mutate(x_coord = st_coordinates(locaties_boomkikker)[,1],
+         y_coord = st_coordinates(locaties_boomkikker)[,2]) %>%
+  st_drop_geometry() 
+
+
+bezoeken_boomkikker <- get_visits_smp() %>%
+  filter(meetnet == "Boomkikker") %>%
+  filter(validatie != -1) %>%
+  filter(voor_analyse) %>%  
+  select(visit_id, bezoek_status)
+
+boomkikker_data <-get_counts_smp() %>%
+  filter(meetnet == "Boomkikker") %>%
+  filter(primaire_soort) %>%
+  inner_join(bezoeken_boomkikker) %>%
+  select(meetnet, protocol, locatie, jaar, datum, visit_id, bezoek_status, opmerkingen, soort_nl, geslacht, activiteit, levensstadium, aantal) %>%
+  left_join(locaties_boomkikker, by = c("meetnet", "locatie"))
+
+
+
+write_csv2(boomkikker_data, "output/meetnetten_boomkikker_2021-10-04.csv")
+
+########################################################################
+
+locaties_rugstreeppad <- get_locations_smp() %>%
+  filter(meetnet == "Rugstreeppad") %>%
+  filter(is_active) %>%
+  select(meetnet, locatie)
+
+locaties_rugstreeppad %>%
+  st_write("output/locaties_rugstreeppad", "locaties_rugstreeppad", driver = "ESRI Shapefile")
+
+############################################################################
+
+visits <- get_visits_smp() %>%
+  filter(meetnet == "Vuursalamander") %>%
+  filter(validatie != -1) %>%
+  filter(voor_analyse) %>%
+  select(visit_id, bezoek_status, start_time, end_time, notes)
+
+aantallen_vuursalamander_buggenhout  <- get_counts_smp() %>%
+  filter(meetnet == "Vuursalamander") %>%
+  filter(str_detect(locatie, "Buggenhout")) %>%
+  inner_join(visits, by = "visit_id") %>%
+  select(meetnet, protocol, locatie, jaar, datum, visit_id, startuur_bezoek = start_time, einduur_bezoek = end_time, bezoek_status, x_lambert72 = x, y_lambert72 = y, aantal, levensstadium, opmerking = notes)
+
+unique(aantallen_vuursalamander_buggenhout$locatie)  
+  
+aantallen_vuursalamander_buggenhout %>%
+  write_csv2("output/meetnetten_vuursalamander_buggenhoutbos_2021-12-03.csv")
