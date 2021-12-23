@@ -401,14 +401,35 @@ data_roestbruine_kniptor <- data_roestbruine_kniptor_sf %>%
   
 ```
 
+# Vermiljoenkever
 
+```{r}
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2021/Data niet in Meetnetten.be/Vermiljoenkever - Oplevering data Meetnetten 2021"
+
+data_wnm_vermiljoenkever <- read_csv2(file.path(data_path, "Vermiljoenkever_Wbe_2021.csv"))
+
+overzicht_tellingen_inhaalslag <- data_wnm_vermiljoenkever %>%
+  filter(str_detect(bijzonderheden, "#Cc")) %>%
+  group_by(naam_nl) %>%
+  summarise(n_tellingen = n_distinct(datum, utm1),
+    n_hokken = n_distinct(utm1)) %>%
+  ungroup()
+```
+
+# Gladde slang
+
+```{r}
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2021/Data niet in Meetnetten.be/Gladde Slang - Oplevering data Meetnetten 2021"
+
+data_gladde_slang <- read_sf(data_path, "GladdeSlang_Meetnet&Inhaalslag_2021")
+```
 
 # Export
 
 ```{r}
-write_vc(data_extern_burchten, "data_burchten", "../processed", strict = FALSE)
-write_vc(data_oeverspinnen, "data_oeverspinnen", "../processed", strict = FALSE)
-write_vc(data_mollusken_locaties, "data_mollusken", "../processed", strict = FALSE)
-write_vc(data_roestbruine_kniptor, "data_roestbruine_kniptor", "../processed", strict = FALSE)
+# write_vc(data_extern_burchten, "data_burchten", "../processed", strict = FALSE)
+# write_vc(data_oeverspinnen, "data_oeverspinnen", "../processed", strict = FALSE)
+# write_vc(data_mollusken_locaties, "data_mollusken", "../processed", strict = FALSE)
+# write_vc(data_roestbruine_kniptor, "data_roestbruine_kniptor", "../processed", strict = FALSE)
 ```
 
