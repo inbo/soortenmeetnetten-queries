@@ -69,6 +69,7 @@ telperiodes_wp <- werkpakketten %>%
   filter(jaar == 2021) %>%
   filter(! meetnet %in% telperiodes_taak$meetnet) %>%
   select(meetnet, start_telperiode = wp_start, einde_telperiode = wp_end) %>%
+  unique() %>% 
   inner_join(temp, by = "meetnet")
 
 telperiodes <- telperiodes_taak %>%
@@ -85,7 +86,8 @@ telperiodes <- telperiodes_taak %>%
 metadata <- metadata_file %>%
   select(-begin_telperiode, - einde_telperiode) %>%
   left_join(telperiodes, by = c("soortgroep", "meetnet", "protocol", "generatie")) %>%
-  left_join(meetnetten_n_locaties, by = "meetnet")
+  left_join(meetnetten_n_locaties, by = "meetnet") %>%
+  select(actief, everything())
 ```
 
 ## Write 
