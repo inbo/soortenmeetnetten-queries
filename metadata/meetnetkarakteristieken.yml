@@ -7,8 +7,8 @@
   - meetnet
   - protocol
   - is_sample
-  hash: 1dbf795acb1acf8dac679f5d1e80d30006354104
-  data_hash: d31292223901d4cfa3ac7570d76c6c2bb82273fc
+  hash: 93fccf577e585902786c1cf36de940a157bd7e1a
+  data_hash: 6cbca4d85802741c300c2870c1ede2a530937427
 soortgroep:
   class: character
 meetnet:
@@ -36,4 +36,6 @@ einde_telperiode:
 is_sample:
   class: logical
 n_locaties:
+  class: integer
+actief:
   class: integer
