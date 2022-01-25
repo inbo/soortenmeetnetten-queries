@@ -408,12 +408,16 @@ data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2021/Data niet in 
 
 data_wnm_vermiljoenkever <- read_csv2(file.path(data_path, "Vermiljoenkever_Wbe_2021.csv"))
 
-overzicht_tellingen_inhaalslag <- data_wnm_vermiljoenkever %>%
-  filter(str_detect(bijzonderheden, "#Cc")) %>%
-  group_by(naam_nl) %>%
-  summarise(n_tellingen = n_distinct(datum, utm1),
-    n_hokken = n_distinct(utm1)) %>%
+overzicht_tellingen_hokken_inhaalslag <- data_wnm_vermiljoenkever %>%
+  mutate(conform_protocol = (str_detect(bijzonderheden, "#Cc")) & (!is.na(bijzonderheden))) %>%
+  group_by(naam_nl, utm1) %>%
+  summarise( n_punten = n_distinct(x),
+            n_tellingen_protocol = sum(conform_protocol),
+            aantal_totaal = sum(aantal > 0)) %>%
   ungroup()
+
+write_csv2(overzicht_tellingen_hokken_inhaalslag, "../output/overzicht_inhaalslag_vermiljoenkever.csv")
+
 ```
 
 # Gladde slang
