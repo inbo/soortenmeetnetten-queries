@@ -189,7 +189,6 @@ where 1=1
     and P.name <> 'Algemene Vlindermonitoring'
     and SA.notes <> 'dummy sample'
     and PG.name <> 'planten'
-    and P.name <> 'Gentiaanblauwtje'
     and V.validation_status <> -1 --afgekeurd
 Order by PG.name
     , P.name
