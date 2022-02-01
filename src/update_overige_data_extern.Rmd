@@ -1,0 +1,404 @@
+---
+title: "Update externe data meetnetten"
+output: html_document
+---
+
+```{r}
+library(leaflet)
+library(sf)
+library(git2rdata)
+library(tidyverse)
+library(units)
+library(readxl)
+library(lubridate)
+library(units)
+
+year_update <- 2021
+```
+
+# Hamster en Das
+
+## Te updaten dataset
+
+```{r}
+data_burchten <- read_vc(file = "data_burchten", root = "../processed") %>%
+  mutate(jaar = year(datum))
+```
+
+## Nieuwe data hamsterburchten
+
+```{r}
+
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2021/Data niet in Meetnetten.be/Hamster - Oplevering data Meetnetten 2021"
+
+burchten_nieuw_sf <- read_sf(data_path, "Hamsterburchten 2021_meetnet_waarnemingen_Lambert72_ontdubbeld_finale versie",
+                             crs = 31370)
+
+burchten_nieuw <- burchten_nieuw_sf %>%
+  rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh, hoofdteller = wnr) %>%
+  mutate(meetnet = "Hamster",
+         protocol = "Hamster - Burcht",
+         locatie = "Widooie",
+         datum = as.Date(datum, format = "%d-%m-%Y"),
+         jaar = year(datum),
+         zeker = ifelse(zeker == "J", "ja",
+              ifelse(zeker == "N", "nee", NA)),
+         x = st_coordinates(geometry)[, 1],
+         y = st_coordinates(geometry)[, 2],
+         visit_id = str_c("extern_", meetnet, jaar, 1:nrow(burchten_nieuw_sf))) %>%
+  st_drop_geometry() %>%
+  select(meetnet, protocol, locatie, visit_id, jaar, datum, soort_wet, soort_nl, aantal, zeker, opmerking, x, y, id_wnm, hoofdteller,)
+
+burchten_nieuw <- burchten_nieuw %>%
+  anti_join(data_burchten, by = c("datum", "x", "y"))
+
+if (nrow(burchten_nieuw) > 0) {
+  
+  burchten_update <- bind_rows(data_burchten,
+                               burchten_nieuw) %>%
+    select(meetnet, protocol, locatie, visit_id, jaar, datum, soort_wet, soort_nl, aantal, everything()) %>%
+    arrange(meetnet, locatie, datum) 
+  
+  write_vc(burchten_update, file = "data_burchten", root = "../processed", strict = FALSE, sorting = c("meetnet", "locatie", "datum", "visit_id"))
+  
+}
+                  
+```
+
+## Nieuwe data onderzochte percelen
+
+```{r}
+
+percelen_update_sf_orig <- read_sf(data_path, "Hamster_percelen_onderzocht_2021_Lambert72_finale versie")
+
+percelen_sf <- percelen_update_sf_orig %>%
+  rename(id_perceel = id, aantal_tellers = X.Tellers, opmerking = burchten_1, gewas = Gewas, oppervlakte_ha = opp..ha.) %>%
+  mutate(meetnet = "Hamster",
+         datum = as.Date(VisitDate, format = "%d/%m/%Y"),
+         type_telling = ifelse(datum > as.Date("2021-06-01"), "zomer", "winter")) %>%
+  select(meetnet, id_perceel, datum, type_telling, aantal_tellers, gewas, oppervlakte_ha, opmerking)
+
+oppervlakte_onderzocht <- percelen_sf %>%
+  mutate(area_calc = drop_units(st_area(geometry))/10000) %>%
+  st_drop_geometry() %>%
+  group_by(type_telling) %>%
+  summarise(oppervlakte_ha_totaal = sum(oppervlakte_ha),
+            area_calc_totaal = round(sum(area_calc), 1),
+            n_bezoeken = n_distinct(datum)) %>%
+  ungroup()
+
+
+
+```
+
+
+
+
+```{r}
+locaties_hamster <- read_sf("../raw/meetnetten_locaties.gpkg", "locaties") %>%
+  filter(meetnet == "Hamster") %>%
+  select(locatie)
+
+```
+
+```{r}
+burchten_nieuw_sf %>%
+  st_transform(crs = 4326) %>%
+  leaflet() %>%
+  addTiles() %>%
+  addCircleMarkers() %>%
+  addPolygons(data = st_transform(locaties_hamster, crs = 4326)) %>%
+  addPolygons(data= st_transform(percelen_sf, crs = 4326))
+```
+
+
+## Nieuwe data Das
+
+```{r, eval = TRUE}
+
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2021/Data niet in Meetnetten.be/Das"
+das_orig <- read.csv2(file.path(data_path, "meetnet_das_2016_2021.csv"))
+
+das <- das_orig %>%
+  mutate(meetnet = "Das",
+         protocol = "Das - Burcht",
+         soort_nl = "Das",
+         soort_wet = "Meles meles", 
+         locatie = str_c("burcht_", burchtID),
+         datum = as.Date(str_c("01-01-", Jaar), format = "%d-%m-%Y"),
+         aantal = ifelse(status == "Verdwenen", 0, 1)
+         ) %>%
+  select(meetnet, protocol, locatie, datum, jaar = Jaar, soort_nl, soort_wet, aantal, status, bewoning, opmerking = Gebied) %>%
+  gather(status, bewoning, key = "covariabele", value = "waarde")
+  
+overzicht_das_jaar <- das %>%
+  group_by(meetnet, jaar, locatie, opmerking) %>%
+  summarise(n_bezoeken = n_distinct(datum)) %>%
+  ungroup() %>%
+  group_by(meetnet, jaar, opmerking) %>%
+  summarise(n_bezoeken = sum(n_bezoeken),
+            n_locaties = n_distinct(locatie)) %>%
+  ungroup()
+
+overzicht_das_cyclus2 <- das %>%
+  filter(jaar >= 2019) %>%
+  group_by(meetnet, locatie, opmerking) %>%
+  summarise(n_bezoeken = n_distinct(datum)) %>%
+  ungroup() %>%
+  group_by(meetnet,  opmerking) %>%
+  summarise(n_bezoeken = sum(n_bezoeken),
+            n_locaties = n_distinct(locatie)) %>%
+  ungroup()
+
+
+das_nieuw <- das %>%
+  anti_join(data_burchten,by = c("locatie", "datum"))
+
+
+if (nrow(das_nieuw) > 0) {
+  
+  burchten_update <- bind_rows(data_burchten,
+                               das_nieuw) %>%
+    select(meetnet, protocol, locatie, visit_id, jaar, datum, soort_wet, soort_nl, aantal, everything()) %>%
+    arrange(meetnet, locatie, datum) 
+  
+  write_vc(burchten_update, file = "data_burchten", root = "../processed", strict = FALSE, sorting = c("meetnet", "locatie", "datum", "visit_id"))
+  
+}
+```
+
+
+
+# Gerande oeverspin
+
+## Te updaten dataset
+
+```{r}
+data_oeverspinnen <- read_vc(file = "data_oeverspinnen", root = "../processed")
+```
+
+
+```{r}
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2021/Data niet in Meetnetten.be/Gerande oeverspin - Oplevering data Meetnetten 2021"
+
+data_oeverspinnen_nieuw <- read.csv2(file.path(data_path, "GerandeOeverspin_wbe_2021.csv")) %>%
+    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed) %>%
+    mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d/%m/%Y"),
+         validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld")) %>%
+  filter(!is.na(x))
+
+pot_leefgebied <- read_sf(dsn = "../data_extern/sampleframe/GerandeOeverspin_Lambert1972_versie2017-03-31", "GerandeOeverspin_Lambert1972_versie2017-03-31") %>%
+  select(locatie = Naam)
+
+data_oeverspinnen_nieuw_sf <- data_oeverspinnen_nieuw %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370) %>%
+  st_join(pot_leefgebied, join = st_nearest_feature) %>%
+  group_by(id) %>%
+  mutate(dist = min(st_distance(geometry, pot_leefgebied))) %>%
+  ungroup()
+
+data_oeverspinnen_nieuw <- data_oeverspinnen_nieuw_sf %>%
+  st_drop_geometry() %>%
+  mutate(x = st_coordinates(data_oeverspinnen_nieuw_sf)[, 1],
+         y = st_coordinates(data_oeverspinnen_nieuw_sf)[, 2],
+         dist_to_pot_leefgebied = round(drop_units(dist), 0),
+         locatie = ifelse(dist_to_pot_leefgebied > 250, NA, locatie)) %>%
+  select(-dist) %>%
+  mutate(jaar = as.numeric(format(datum, "%Y")),
+         meetnet = "Gerande oeverspin") %>% 
+  select(meetnet, jaar, locatie, gebied, datum, id, everything())
+
+
+data_oeverspinnen_nieuw <- data_oeverspinnen_nieuw %>%
+  anti_join(data_oeverspinnen, by = c("datum", "x", "y", "naam_nl"))
+  
+  
+```
+
+```{r}
+if (nrow(data_oeverspinnen_nieuw) > 0) {
+  
+  data_oeverspinnen <- data_oeverspinnen %>%
+    bind_rows(data_oeverspinnen_nieuw) %>%
+    arrange(datum, locatie)
+  
+}
+
+data_oeverspinnen <- data_oeverspinnen %>%
+  select(id, meetnet, locatie, gebied, x, y, datum, naam_nl, naam_lat, aantal, gedrag, kleed, status, validatie, waarnemer, dist_to_pot_leefgebied)
+
+write_vc(data_oeverspinnen, root = "../processed",file =  "data_oeverspinnen", sorting = c("datum", "locatie", "id"), strict = FALSE)
+```
+
+
+# Mollusken
+
+```{r}
+data_mollusken_2020 <- read.csv2("../data_extern/count_data/mollusken/P-CO-000385_Mollusken_wbe_2020_Dump20201201__ALLES_UNIEK.csv", stringsAsFactors = FALSE) %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, precisie, opm = bijzonderheden) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d"),
+         naam_nl = ifelse(naam_nl == "Zegge-korfslak", "Zeggekorfslak", naam_nl))
+
+data_mollusken_2019 <- read_sf(dsn = "../data_extern/count_data/mollusken", layer = "Export_waarnemingen_2019_molluskenmeetnetten") %>%
+  st_drop_geometry() %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, precisie, opm = bijzonderh) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d-%m-%Y"))
+
+data_mollusken_2016_2018 <- read_sf(dsn = "../data_extern/count_data/mollusken", layer = "Mollusken 2016-2018-10-30 export wnbe") %>%
+  st_drop_geometry() %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, precisie, opm = bijzonderh) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d"))
+
+data_mollusken_ps_bs <- bind_rows(data_mollusken_2016_2018,
+                           data_mollusken_2019,
+                           data_mollusken_2020) %>%
+  filter(naam_nl %in% c("Platte schijfhoren", "Bataafse stroommossel")) %>%
+  filter(!is.na(x))
+
+data_mollusken <- read_excel("../data_extern/count_data/mollusken/INBODATAVR-277_divers_wbe_VL_Dump20210524.xlsx") %>%
+  bind_rows(read_excel("../data_extern/count_data/mollusken/INBODATAVR-277_divers_wbe_VL_Dump20210524_bijkomend.xlsx")) %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, precisie, opm = bijzonderheden) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d"),
+         naam_nl = ifelse(naam_nl == "Zegge-korfslak", "Zeggekorfslak", naam_nl)) %>%
+  bind_rows(data_mollusken_ps_bs) %>%
+  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld"),
+         meetnet = naam_nl)
+
+# locaties_mollusken_actief_sf <- read_sf("../raw/meetnetten_locaties.gpkg", "locaties") %>%
+#   filter(soortgroep == "mollusken") %>%
+#   filter(is_active) %>%
+#   select(meetnet, locatie) %>%
+#   st_transform(crs = 31370) 
+
+pot_leefgebied_zeggekorfslak <- read_sf(dsn = "../data_extern/sampleframe/Zeggekorfslak_Lambert1972_versie2018-03-14", "Zeggekorfslak_Lambert1972_versie2018-03-14") %>%
+  select(meetnet = Meetnet, locatie = Naam)
+
+pot_leefgebied_platte_schijfhoorn <- read_sf(dsn = "../data_extern/sampleframe/PlatteSchijfhoren_Lambert1972_versie2018-03-14", "PlatteSchijfhoren_Lambert1972_versie2018-03-14") %>%
+  select(meetnet = Meetnet, locatie = Naam) %>%
+  mutate(meetnet = "Platte schijfhoren")
+
+pot_leefgebied_nauwe_korfslak <- read_sf(dsn = "../data_extern/sampleframe/NauweKorfslak_Lambert1972_versie2018-03-14", "NauweKorfslak_Lambert1972_versie2018-03-14") %>%
+  select(meetnet = Meetnet, locatie = Naam) %>%
+  mutate(meetnet = "Nauwe korfslak")
+
+pot_leefgebied_bataafse_stroommossel <- read_sf(dsn = "../data_extern/sampleframe/BataafseStroommossel_Lambert1972_versie2018-03-14", "BataafseStroommossel_Lambert1972_versie2018-03-14") %>%
+  select(meetnet = Meetnet, locatie = Naam) %>%
+  mutate(meetnet = "Bataafse stroommossel")
+
+pot_leefgebied_mollusken <- bind_rows(
+  pot_leefgebied_zeggekorfslak,
+  pot_leefgebied_platte_schijfhoorn,
+  pot_leefgebied_nauwe_korfslak,
+  pot_leefgebied_bataafse_stroommossel
+)
+
+data_mollusken_by_meetnet <- data_mollusken %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370) %>%
+  group_by(meetnet) %>%
+  nest()
+
+closest_location <- function(meetnet_select, observations) {
+  
+  locations_meetnet <- pot_leefgebied_mollusken %>%
+    filter(meetnet == meetnet_select )
+  
+  observations_result <- observations %>%
+    st_join(locations_meetnet, join = st_nearest_feature) %>%
+    group_by(id) %>%
+    mutate(dist = min(drop_units(st_distance(geometry, locations_meetnet))),
+           dist = round(dist, 0)) %>%
+    ungroup() %>%
+    dplyr::select(-meetnet) %>%
+    st_drop_geometry() %>%
+    mutate(x = st_coordinates(observations)[,1],
+           y = st_coordinates(observations)[,2])
+  
+  return(observations_result)
+            
+}
+
+data_mollusken_by_meetnet <- data_mollusken_by_meetnet %>%
+  mutate(data_locations_actief = map2(meetnet, data, closest_location_actief))
+
+data_mollusken_locaties <- data_mollusken_by_meetnet %>%
+  select(data_locations_actief) %>%
+  unnest(data_locations_actief) %>%
+  mutate(locatie = ifelse(dist > 500, NA, locatie)) %>%
+  rename(dist_to_pot_leefgebied = dist) %>%
+  mutate(jaar = as.numeric(format(datum, "%Y"))) %>%
+  select(meetnet, jaar, locatie, gebied, datum, id, everything())
+
+```
+
+# Roestbruine kniptor
+
+## Nieuwe data
+
+```{r}
+
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2021/Data niet in Meetnetten.be/Roestbruine kniptor - Oplevering data Meetnetten 2021"
+
+data_roestbruine_kniptor_nieuw <- read_csv2(file.path(data_path, "RoestbruineKniptor_wbe_2021_uren_gevangen.csv")) %>%
+  filter(lon != "onbekend") %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, opmerking = bijzonderheden) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d/%m/%Y")) %>%
+  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld")) %>%
+  filter(!is.na(x))
+
+locaties_roestbruine_kniptor_sf <- read_sf("../raw/meetnetten_locaties.gpkg", "locaties") %>%
+  filter(meetnet == "Roestbruine kniptor") %>%
+  select(meetnet, locatie, is_active) %>%
+  st_transform(crs = 31370)
+
+data_roestbruine_kniptor_nieuw_sf <- data_roestbruine_kniptor_nieuw %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370) %>%
+  st_join(locaties_roestbruine_kniptor_sf, join = st_nearest_feature) %>%
+  group_by(id) %>%
+  mutate(dist = min(st_distance(geometry, locaties_roestbruine_kniptor_sf))) %>%
+  ungroup()
+
+data_roestbruine_kniptor_nieuw <- data_roestbruine_kniptor_nieuw_sf %>%
+  st_drop_geometry() %>%
+  mutate(x = st_coordinates(data_roestbruine_kniptor_nieuw_sf)[, 1],
+         y = st_coordinates(data_roestbruine_kniptor_nieuw_sf)[, 2],
+         dist_to_pot_leefgebied = round(drop_units(dist), 0),
+         locatie = ifelse(dist_to_pot_leefgebied > 250, NA, locatie),
+         is_active = ifelse(is.na(locatie), NA, is_active)) %>%
+  select(-dist) %>%
+  mutate(jaar = as.numeric(format(datum, "%Y")),
+         meetnet = "Roestbruine kniptor") %>% 
+  select(meetnet, jaar, locatie, locatie_actief = is_active, gebied, datum, id, everything())
+
+  
+```
+
+## Update data
+
+```{r}
+data_roestbruine_kniptor <- read_vc(file = "data_roestbruine_kniptor", root = "../processed") %>%
+  filter(jaar != 2021)
+
+data_roestbruine_kniptor_nieuw <- data_roestbruine_kniptor_nieuw %>%
+  anti_join(data_roestbruine_kniptor, by = c("locatie", "datum"))
+
+data_roestbruine_kniptor_update <- data_roestbruine_kniptor %>%
+  bind_rows(data_roestbruine_kniptor_nieuw) %>%
+  arrange(datum, locatie)
+
+write_vc(data_roestbruine_kniptor_update, file = "data_roestbruine_kniptor", root = "../processed", sorting = c("datum", "locatie", "x", "y"), strict = FALSE)
+
+check <- data_roestbruine_kniptor %>%
+  group_by(datum, x, y) %>%
+  filter(n() > 1) %>%
+  ungroup()
+```
+
+
+
+
