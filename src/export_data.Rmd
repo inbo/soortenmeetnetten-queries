@@ -211,10 +211,11 @@ aantallen_punt <- aantallen_punt  %>%
   mutate(x = st_coordinates(aantallen_punt)[, 1],
          y = st_coordinates(aantallen_punt)[, 2]) %>%
   st_drop_geometry() %>%
-  set_utf8()
+  set_utf8() %>%
+  select(-geom)
 
 aantallen_overig <- aantallen_orig %>%
-  filter(!str_detect(geom_text, "POINT")) %>% 
+  filter(!str_detect(geom_text, "POINT") | is.na(geom_text)) %>% 
   set_utf8()
 
 aantallen_orig <- bind_rows(aantallen_punt,
