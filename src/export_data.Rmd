@@ -36,45 +36,48 @@ source("connect_db.R")
 ### Bezoeken
 
 ```{r}
-query_bezoeken <- "Select PG.name as soortgroep
-    , P.Name as meetnet
-    , PR.i18n->>'name_nl' as protocol
-    , L.name as locatie
-    , V.start_date as datum
-    , V.start_time
-    , V.end_time
-    , V.end_date
-    , V.task_id
-    , v.validation_status as validatie
-    , T.name as taak
-    , case when V.legacy_status = 1 then 'Conform protocol'
-           when V.legacy_status = -1 then 'Niet volledig conform protocol'
-           when V.legacy_status = -2 then 'Geen veldwerk mogelijk'
-           else Null
-      end as bezoek_status_oud
-    , case when V.status = 1 then 'Conform protocol'
-           when V.status = -1 then 'Weersomstandigheden ongunstig'
-           when V.status = -2 then 'Telmethode niet gevolgd'
-           when V.status = -3 then 'Geen veldwerk mogelijk - locatie ontoegankelijk'
-           when V.status = -4 then 'Geen veldwerk mogelijk - locatie ongeschikt'
-           else Null
-      end as bezoek_status
-    , V.id as visit_id
-    , V.year_target as jaardoel
-    , V.analysis as voor_analyse
-    , ARRAY_TO_STRING(ARRAY[U.first_name, U.Last_name], ' ') AS hoofdteller
-    , V.notes
-from Projects_project P
+
+query_bezoeken <- "Select 
+  PG.name as soortgroep, 
+  P.Name as meetnet,
+  PR.i18n->>'name_nl' as protocol, 
+  L.name as locatie, 
+  V.start_date as datum, 
+  V.start_time, 
+  V.end_time, 
+  V.end_date, 
+  V.task_id, 
+  v.validation_status as validatie, 
+  T.name as taak, 
+  case when V.legacy_status = 1 then 'Conform protocol'
+       when V.legacy_status = -1 then 'Niet volledig conform protocol'
+       when V.legacy_status = -2 then 'Geen veldwerk mogelijk'
+       else Null
+  end as bezoek_status_oud, 
+  case when V.status = 1 then 'Conform protocol'
+       when V.status = -1 then 'Weersomstandigheden ongunstig'
+       when V.status = -2 then 'Telmethode niet gevolgd'
+       when V.status = -3 then 'Geen veldwerk mogelijk - locatie ontoegankelijk'
+       when V.status = -4 then 'Geen veldwerk mogelijk - locatie ongeschikt'
+       else Null
+  end as bezoek_status, 
+  V.id as visit_id, 
+  V.year_target as jaardoel, 
+  V.analysis as voor_analyse, 
+  ARRAY_TO_STRING(ARRAY[U.first_name, U.Last_name], ' ') AS hoofdteller, 
+  V.notes
+  from Projects_project P
     inner join projects_projectgroup PG on PG.id = P.group_id
     inner join fieldwork_visit V on V.project_id = P.id
     inner Join Locations_location L on L.ID = V.location_ID
     inner join Protocols_protocol PR on PR.id = V.protocol_ID
     left outer join projects_task T on T.ID = V.task_id
     inner join accounts_user U on U.ID = V.user_id
-Order by PG.name
-    , P.Name
-    , L.name
-    , V.start_date"
+  and P.name <> 'Algemene Vlindermonitoring'
+  Order by PG.name, 
+    P.Name, 
+    L.name, 
+    V.start_date"
 
 bezoeken_orig <- set_utf8(dbGetQuery(con, query_bezoeken))
 
@@ -102,31 +105,28 @@ query_selectLocations <- "SELECT
     PL.is_active,
     PL.user_id,
     ARRAY_TO_STRING(ARRAY[U.first_name, U.Last_name], ' ') AS geclaimd_door,
-    st_astext(L.geom) as geom_text,
-    L.geom
+    st_astext(L.geom) as geom_text
     FROM locations_location L
     INNER JOIN projects_projectlocation PL ON PL.location_id = L.id
     INNER JOIN projects_project P ON P.id = PL.project_id
     INNER JOIN projects_projectgroup PG on PG.id = P.group_id
-    LEFT JOIN accounts_user U on U.ID = PL.user_id;"
+    LEFT JOIN accounts_user U on U.ID = PL.user_id
+and P.name <> 'Algemene Vlindermonitoring'
+and P.name <> 'Vleermuizen - Wintertellingen'"
 
-locaties <- st_read(dsn = con, query = query_selectLocations)
+locaties <- set_utf8(dbGetQuery(conn = con, statement = query_selectLocations))
 
-locaties_UTF8 <- set_utf8(locaties %>%
-                            st_drop_geometry())
-
-locaties <- locaties %>%
-  select(id) %>%
-  left_join(locaties_UTF8, by = "id") %>%
-  filter(meetnet != "Algemene Vlindermonitoring") %>%
+locaties_sf <- locaties %>%
   mutate(locatie_type = ifelse(is.na(parent_id),  "locatie", "sublocatie"),
          meetnet_type = ifelse(meetnet %in% c("Otter", "Gerande oeverspin", "Vliegend hert", "Roestbruine kniptor") | soortgroep == "mollusken", "inhaalslag", "meetnet"),
          type = ifelse(meetnet_type == "meetnet",
                        ifelse(is_sample == 1, "meetnetlocatie", "optionele locatie"),
                        ifelse(meetnet_type == "inhaalslag", "locatie inhaalslag", NA))) %>%
-  select(soortgroep, meetnet, locatie, is_active, is_sample, locatie_type, everything())
+  select(soortgroep, meetnet, locatie, is_active, is_sample, locatie_type, everything()) %>%
+  mutate(geom = geom_text) %>%
+  st_as_sf(wkt = "geom", crs = 4326)
 
-locaties_hoofdlocatie <- locaties %>%
+locaties_hoofdlocatie <- locaties_sf %>%
   filter(locatie_type == "locatie") %>%
   arrange(soortgroep, meetnet, locatie)
 
@@ -135,7 +135,7 @@ namen_hoofdlocaties <- locaties_hoofdlocatie %>%
   mutate(geclaimd = ifelse(is.na(user_id), "nee", "ja")) %>%
   select(meetnet, locatie, locatie_id = id,  geclaimd, geclaimd_door)
 
-sublocations_transecten <- locaties %>%
+sublocations_transecten <- locaties_sf %>%
   filter(locatie_type == "sublocatie") %>%
   select(-geclaimd_door) %>%
   arrange(soortgroep, meetnet, locatie) %>%
@@ -165,12 +165,12 @@ query_aantallen <- "select PG.name as soortgroep
     , SP.scientific_name as soort_wet
     , PS.is_primary as primaire_soort
     , O.sample_id
-    , O.geom
     , O.sex as geslacht
     , O.id as observation_id
     , ACT.i18n->>'name_nl' as activiteit
     , LS.i18n->>'name_nl' as levensstadium
     , O.number_min as aantal
+    , st_astext(O.geom) as geom_text
  from Projects_project P
     inner join projects_projectgroup PG on PG.id = P.group_id
     inner join fieldwork_visit V on V.project_ID = P.ID
@@ -187,6 +187,7 @@ query_aantallen <- "select PG.name as soortgroep
 where 1=1
     and P.name <> 'Algemene Broedvogelmonitoring (ABV)'
     and P.name <> 'Algemene Vlindermonitoring'
+    and P.name <> 'Vleermuizen - Wintertellingen'
     and SA.notes <> 'dummy sample'
     and PG.name <> 'planten'
     and V.validation_status <> -1 --afgekeurd
@@ -196,12 +197,14 @@ Order by PG.name
     , V.start_date
     , L1.Name"
 
-#aantallen_orig <- set_utf8(dbGetQuery(con, query_aantallen)) 
+aantallen_orig <- set_utf8(dbGetQuery(con, query_aantallen)) 
 
-aantallen_orig <- st_read(dsn = con, query = query_aantallen) 
+#aantallen_orig <- st_read(dsn = con, query = query_aantallen) 
 
 aantallen_punt <- aantallen_orig %>%
-  filter(st_is(geom, type = "POINT")) %>%
+  filter(str_detect(geom_text, "POINT")) %>%
+  mutate(geom = geom_text) %>%
+  st_as_sf(wkt = "geom_text", crs = 4326) %>%
   st_transform(31370)
 
 aantallen_punt <- aantallen_punt  %>%
@@ -211,8 +214,7 @@ aantallen_punt <- aantallen_punt  %>%
   set_utf8()
 
 aantallen_overig <- aantallen_orig %>%
-  filter(!st_is(geom, type = "POINT")) %>%
-  st_drop_geometry() %>%
+  filter(!str_detect(geom_text, "POINT")) %>% 
   set_utf8()
 
 aantallen_orig <- bind_rows(aantallen_punt,
@@ -222,7 +224,19 @@ aantallen <- aantallen_orig %>%
   mutate(jaar = as.numeric(format(datum, "%Y")),
          doy = as.numeric(format(datum, "%j"))) %>%
   mutate(levensstadium = ifelse(levensstadium == "adult" & soortgroep == "libellen", "imago", levensstadium)) %>%
-  select(soortgroep, meetnet, protocol, locatie, jaar, datum, doy, everything())
+  select(soortgroep, meetnet, protocol, locatie, jaar, datum, doy, everything()) %>%
+  group_by(sample_id, species_id, geslacht, levensstadium, activiteit) %>%
+  mutate(rank_temp = rank(aantal, ties.method = "random"),
+         n_temp = n()) %>%
+  ungroup() %>%
+  mutate(type_aantal = ifelse(protocol %in% c("Vlinders - Gebiedstelling (v1)", "Vlinders - Gebiedstelling"),
+                              ifelse(n_temp == 1, "totaal gezien",
+                                     ifelse(rank_temp == 1 & n_temp ==2, "maximum samen gezien",
+                                            ifelse(rank_temp == 2, "totaal gezien", NA))),
+                              "totaal gezien") 
+                      ) %>%
+  select(-rank_temp, -n_temp)
+
 
 query_aantallen_planten <- "select O.id
     , PG.name as soortgroep
@@ -240,7 +254,6 @@ query_aantallen_planten <- "select O.id
     , SP.scientific_name as soort_wet
     , PS.is_primary as primaire_soort
     , O.sample_id
-    , O.geom
     , st_astext(O.geom) as geom_text
     , S.i18n->>'name_nl' as schaal
     , SC.code
@@ -272,24 +285,18 @@ Order by PG.name
     , V.start_date
     , L1.Name"
 
-aantallen_planten <- st_read(dsn = con, query = query_aantallen_planten)
-
-aantallen_planten_UTF8 <- set_utf8(aantallen_planten %>%
-                            st_drop_geometry())
-
-aantallen_planten <- aantallen_planten %>%
-  select(id) %>%
-  left_join(aantallen_planten_UTF8, by ="id") %>%
+aantallen_planten <- set_utf8(dbGetQuery(con, query_aantallen_planten)) %>%
+  set_utf8() %>%
   mutate(puntlocatie = ifelse(is.na(geom_text), 0, 1),
          track = ifelse(is.na(track_geom_text), 0, 1))
 
 aantallen_planten_puntlocaties <- aantallen_planten %>%
   filter(puntlocatie == 1) %>%
   mutate(waarnemer = str_c(first_name, " ", last_name)) %>%
-  select(meetnet, protocol, locatie, datum,  soort_w = soort_wet, visit_id, waarnemer, validatie_bezoek = validatie, track, sample_id, schaal, code, beschrijving_floroncode, opm)
-
+  select(meetnet, protocol, locatie, datum,  soort_w = soort_wet, visit_id, waarnemer, validatie_bezoek = validatie, track, sample_id, schaal, code, beschrijving_floroncode, opm, geom = geom_text) %>%
+  st_as_sf(wkt = "geom", crs = 4326)
+  
 aantallen_planten <- aantallen_planten %>%
-  st_drop_geometry() %>%
   select(-geom_text, -track_geom_text)
 ```
 
@@ -425,7 +432,6 @@ query_tracks <- "select PG.name as soortgroep
     , V.id as visit_id
     , V.start_date as datum
     , v.validation_status as validatie
-    , v.track_geom as geom
      , st_astext(v.track_geom) as track_geom_text
  from Projects_project P
     inner join projects_projectgroup PG on PG.id = P.group_id
@@ -438,22 +444,17 @@ Order by PG.name
     , L.Name
     , V.start_date"
 
-tracks <- st_read(dsn = con, query = query_tracks) %>%
+tracks <- dbGetQuery(con, query_tracks) %>%
   filter(!is.na(track_geom_text)) %>%
-  filter(validatie != "-1")
-
-tracks_UTF8 <- set_utf8(tracks %>%
-                          st_drop_geometry())
-
-tracks <- tracks %>%
-  select(visit_id) %>%
-  left_join(tracks_UTF8, by = "visit_id")
+  filter(validatie != "-1") %>%
+  set_utf8() %>%
+  rename(geom = track_geom_text) %>%
+  st_as_sf(wkt = "geom", crs = 4326) 
 
 tracks_planten <- tracks %>%
   filter(soortgroep == "planten")
 
 ```
-
 
 
 ### Aantallen planten alternatief
@@ -810,7 +811,7 @@ write_vc(locatie_opm, "locatie_opm", root = "../raw", sorting = c("meetnet", "lo
 write_vc(meetnetten_users, "meetnetten_users", root = "../raw", sorting = c("meetnet", "last_name"), strict = FALSE)
 write_vc(locatie_users, "locatie_users", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
 write_vc(locatie_users_reserve, "locatie_users_reserve", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
-st_write(locaties, "../raw/meetnetten_locaties.gpkg", layer = "locaties", driver = "GPKG", delete_layer = TRUE)
+st_write(locaties_sf, "../raw/meetnetten_locaties.gpkg", layer = "locaties", driver = "GPKG", delete_layer = TRUE)
 st_write(sublocations_transecten, "../raw/meetnetten_locaties.gpkg", layer = "transecten", driver = "GPKG", delete_layer = TRUE)
 st_write(aantallen_planten_puntlocaties, "../raw/planten_puntlocaties.gpkg", layer = "planten_puntlocaties", driver = "GPKG", delete_layer = TRUE)
 st_write(tracks_planten, "../raw/planten_puntlocaties.gpkg", layer = "tracks", driver = "GPKG", delete_layer = TRUE)
