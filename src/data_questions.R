@@ -420,3 +420,38 @@ unique(aantallen_vuursalamander_buggenhout$locatie)
   
 aantallen_vuursalamander_buggenhout %>%
   write_csv2("output/meetnetten_vuursalamander_buggenhoutbos_2021-12-03.csv")
+
+############################################################################
+
+visits_wintertellingen <- read_vc("raw/bezoeken") %>%
+  filter(meetnet == "Vleermuizen - Wintertellingen")
+
+objecten_winter_2021_2022 <- visits_wintertellingen %>%
+  filter(datum >= "2021-06-15", datum < "2022-06-15") %>%
+  group_by(locatie) %>%
+  summarise(n_tellingen = n_distinct(visit_id),
+            datum_bezoek = str_c(datum, collapse = "; ")) %>%
+  ungroup() %>%
+  mutate(geteld_winter_2021_2022 = "ja")
+
+locaties_winter_2021_2022 <- st_read("raw/meetnetten_locaties.gpkg", "locaties") %>%
+  filter(meetnet == "Vleermuizen - Wintertellingen") %>%
+  filter(locatie_type == "locatie") %>%
+  left_join(objecten_winter_2021_2022, by = "locatie") %>%
+  mutate(geteld_winter_2021_2022 = ifelse(is.na(geteld_winter_2021_2022), "nee", geteld_winter_2021_2022)) %>%
+  select(meetnet, locatie, geteld_winter_2021_2022, datum_bezoek) %>%
+  st_transform(31370)
+
+st_write(locaties_winter_2021_2022, "processed/objecten_winter_2021_2022.gpkg")
+
+##########################################
+
+aantallen_beverlo <- read_vc("raw/aantallen") %>%
+  mutate(locatie = str_to_lower(locatie)) %>%
+  filter(str_detect(locatie, "beverlo")) %>%
+  group_by(meetnet, protocol, locatie, datum, visit_id, soort_nl, soort_wet, levensstadium) %>%
+  summarize(aantal = sum(aantal)) %>%
+  ungroup() %>%
+  filter(!is.na(soort_nl))
+
+write_csv(aantallen_beverlo, "processed/tellingen_beverlo.csv")    
