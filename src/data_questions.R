@@ -3,6 +3,7 @@ library(tidyverse)
 library(sf)
 library(lubridate)
 library(n2khab)
+library(leaflet)
 
 # remotes::install_github("inbo/n2khab",
 #                         build_vignettes = TRUE,
@@ -446,10 +447,48 @@ st_write(locaties_winter_2021_2022, "processed/objecten_winter_2021_2022.gpkg")
 
 ##########################################
 
+militair_domein_beverlo  <- read_sf("gis/militaire_domeinen/Gewestplan_MilitairDomein.shp", crs = 31370) %>%
+  filter(OIDN %in% c(7653, 38325)) %>%
+  st_transform(4326) %>%
+  select(hoofdcode = HOOFDCODE)
+
+locaties_beverlo <- st_read("raw/meetnetten_locaties.gpkg", "locaties") %>%
+  filter(locatie_type == "locatie",
+         meetnet_type == "meetnet",
+         meetnet != "Algemene Vlindermonitoring") %>%
+  filter(is_active) %>%
+  mutate(check = sf::st_is_valid(geom),
+         geom_type = ifelse(str_detect(geom_text, "POINT"), "point", "polygon")) %>%
+  filter(check) %>%
+  st_join(militair_domein_beverlo) %>%
+  filter(!is.na(hoofdcode)) %>%
+  arrange(soortgroep)
+
+militair_domein_beverlo %>%
+  leaflet() %>%
+  addTiles() %>%
+  addPolygons() %>%
+  addPolygons(data = filter(locaties_beverlo, geom_type == "polygon"),  color = "yellow", popup = ~str_c(meetnet, " - ", locatie)) %>%
+  addPolygons(data = filter(locaties_beverlo, geom_type == "polygon"),  color = "yellow", popup = ~str_c(meetnet, " - ", locatie)) %>%
+  addCircleMarkers(data = filter(locaties_beverlo, geom_type == "point"),  color = "red", popup = ~str_c(meetnet, " - ", locatie))
+
+buiten_md <- c("Kiefhoek/Veewei", )
+
+
 aantallen_beverlo <- read_vc("raw/aantallen") %>%
   mutate(locatie = str_to_lower(locatie)) %>%
-  filter(str_detect(locatie, "beverlo")) %>%
+  filter(str_detect(locatie, "beverlo") | 
+           (locatie %in% str_to_lower(locaties_beverlo$locatie))) %>%
   group_by(meetnet, protocol, locatie, datum, visit_id, soort_nl, soort_wet, levensstadium) %>%
+  summarize(aantal = sum(aantal)) %>%
+  ungroup() %>%
+  filter(!is.na(soort_nl))
+
+aantallen_beverlo_planten <- read_vc("raw/aantallen_planten") %>%
+  mutate(locatie = str_to_lower(locatie)) %>%
+  filter(str_detect(locatie, "beverlo") | 
+           (locatie %in% str_to_lower(locaties_beverlo$locatie))) %>%
+  group_by(meetnet, protocol, locatie, datum, visit_id, soort_nl, soort_wet) %>%
   summarize(aantal = sum(aantal)) %>%
   ungroup() %>%
   filter(!is.na(soort_nl))
