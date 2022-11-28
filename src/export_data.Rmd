@@ -12,6 +12,7 @@ library(RPostgreSQL)
 library(tidyverse)
 library(sf)
 library(git2rdata)
+library(inbodb)
 ```
 
 ```{r}
@@ -27,8 +28,14 @@ set_utf8 <- function(x) {
 
 ## Connect to database
 
-```{r}
+```{r, eval = TRUE}
 source("connect_db.R")
+```
+
+```{r, eval = FALSE}
+
+con <- connect_inbo_dbase("S0008_00_Meetnetten")
+
 ```
 
 ## Queries
@@ -300,6 +307,51 @@ aantallen_planten_puntlocaties <- aantallen_planten %>%
 aantallen_planten <- aantallen_planten %>%
   select(-geom_text, -track_geom_text)
 ```
+
+```{r, eval = FALSE}
+query_aantallen_abv <- "select PG.name as soortgroep
+    , P.name as meetnet
+    , L.name as locatie
+    , L1.name as sublocatie
+    , PR.i18n->>'name_nl' as protocol
+    , V.id as visit_id
+    , V.start_date as datum
+    , SA.Not_Counted as niet_geteld
+    , SA.is_complete as checklist
+    , SA.Notes as opmerkingen
+    , O.species_ID
+    , SP.i18n->>'name_nl' as soort_nl
+    , SP.scientific_name as soort_wet
+    , PS.is_primary as primaire_soort
+    , O.sample_id
+    , O.id as observation_id
+    , O.number_min as aantal
+ from Projects_project P
+    inner join projects_projectgroup PG on PG.id = P.group_id
+    inner join fieldwork_visit V on V.project_ID = P.ID
+    left Outer join protocols_protocol PR on PR.id = V.protocol_id
+    left outer join fieldwork_sample SA on SA.visit_ID = V.ID
+    left outer join fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join Species_species SP on SP.ID = O.species_id
+    left outer join species_activity ACT on ACT.id = O.activity_id
+    left outer join species_lifestage LS on LS.id = O.life_stage_id
+    left outer join Locations_location L ON L.ID = V.location_ID
+    left outer Join Locations_location L1 on L1.ID = SA.location_id
+    left outer join accounts_user U on U.ID = V.user_id
+    left outer join projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+where 1=1
+    and P.name = 'Algemene Broedvogelmonitoring (ABV)'
+Order by PG.name
+    , P.name
+    , L.Name
+    , V.start_date
+    , L1.Name"
+
+aantallen_abv <- set_utf8(dbGetQuery(con, query_aantallen_abv)) 
+
+write_vc(aantallen_abv, "aantallen_abv", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id", "soort_nl"), strict = FALSE)
+```
+
 
 
 ```{r}
