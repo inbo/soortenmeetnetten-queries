@@ -472,8 +472,10 @@ militair_domein_beverlo %>%
   addPolygons(data = filter(locaties_beverlo, geom_type == "polygon"),  color = "yellow", popup = ~str_c(meetnet, " - ", locatie)) %>%
   addCircleMarkers(data = filter(locaties_beverlo, geom_type == "point"),  color = "red", popup = ~str_c(meetnet, " - ", locatie))
 
-buiten_md <- c("Kiefhoek/Veewei", )
+buiten_md <- c("Kiefhoek/Veewei")
 
+locaties_beverlo <- locaties_beverlo %>%
+  filter(! locatie %in% buiten_md )
 
 aantallen_beverlo <- read_vc("raw/aantallen") %>%
   mutate(locatie = str_to_lower(locatie)) %>%
@@ -488,9 +490,20 @@ aantallen_beverlo_planten <- read_vc("raw/aantallen_planten") %>%
   mutate(locatie = str_to_lower(locatie)) %>%
   filter(str_detect(locatie, "beverlo") | 
            (locatie %in% str_to_lower(locaties_beverlo$locatie))) %>%
+  select(meetnet, protocol, locatie, datum, visit_id, soort_nl, soort_wet, code, beschrijving_floroncode) %>%
+  filter(!is.na(soort_nl))
+
+aantallen_beverlo_abv <- read_vc("raw/aantallen_abv") %>%
+  mutate(locatie = str_to_lower(locatie)) %>%
+  filter(locatie %in% str_to_lower(locaties_beverlo$locatie)) %>%
   group_by(meetnet, protocol, locatie, datum, visit_id, soort_nl, soort_wet) %>%
   summarize(aantal = sum(aantal)) %>%
   ungroup() %>%
   filter(!is.na(soort_nl))
 
-write_csv(aantallen_beverlo, "processed/tellingen_beverlo.csv")    
+tellingen_beverlo <- aantallen_beverlo %>%
+  bind_rows(aantallen_beverlo_abv) %>%
+  bind_rows(aantallen_beverlo_planten) %>%
+  arrange(meetnet, locatie, datum, soort_nl)
+
+write_csv2(tellingen_beverlo, "processed/tellingen_beverlo.csv")    
