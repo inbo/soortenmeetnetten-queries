@@ -475,7 +475,10 @@ militair_domein_beverlo %>%
 buiten_md <- c("Kiefhoek/Veewei")
 
 locaties_beverlo <- locaties_beverlo %>%
-  filter(! locatie %in% buiten_md )
+  filter(! locatie %in% buiten_md ) %>%
+  select(meetnet, locatie) %>%
+  unique() %>%
+  arrange(meetnet, locatie)
 
 aantallen_beverlo <- read_vc("raw/aantallen") %>%
   mutate(locatie = str_to_lower(locatie)) %>%
@@ -506,4 +509,6 @@ tellingen_beverlo <- aantallen_beverlo %>%
   bind_rows(aantallen_beverlo_planten) %>%
   arrange(meetnet, locatie, datum, soort_nl)
 
-write_csv2(tellingen_beverlo, "processed/tellingen_beverlo.csv")    
+write_csv2(tellingen_beverlo, "processed/tellingen_beverlo.csv") 
+
+st_write(locaties_beverlo, "processed/locaties_beverlo.gpkg")
