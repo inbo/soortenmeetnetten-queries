@@ -17,7 +17,9 @@ library(readxl)
 ## Gevonden burchten
 
 ```{r}
-burchten2016_sf <- read_sf("../data_extern/count_data/hamster", "Hamster_gevonden_burchten_2016_Lambert72_EPSG31370")
+
+burchten2016_sf <- read_sf("G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2016/Hamster",
+                           "Hamster_gevonden_burchten_2016_Lambert72_EPSG31370")
 
 burchten2016 <- burchten2016_sf %>%
   mutate(datum = as.Date(OPMERKING, format = "%Y-%m-%d"),
@@ -30,7 +32,7 @@ burchten2016 <- burchten2016_sf %>%
   st_drop_geometry() %>%
     select(soort_wet, soort_nl, datum, aantal,  opmerking, x, y)
 
-burchten2017_sf <- read_sf("../data_extern/count_data/hamster", "Hamsterburchten_2017_v29092017_Lambert72")
+burchten2017_sf <- read_sf("G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2017/Hamster", "Hamsterburchten_2017_v29092017_Lambert72")
 
 burchten2017 <- burchten2017_sf %>%
   rename(id_wnm = ID, soort_wet = Wetenschap, soort_nl = Naam, aantal = Aantal, opmerking = Toelichtin, hoofdteller = Waarnemer, zeker = Zeker) %>%
@@ -42,7 +44,7 @@ burchten2017 <- burchten2017_sf %>%
   st_drop_geometry() %>%
   select(id_wnm, soort_wet, soort_nl, datum, aantal, zeker, hoofdteller, opmerking, x, y)
 
-burchten2018_sf <- read_sf("../data_extern/count_data/hamster", "Hamsterburchten_2018_Meetnet-waarnemingen-ontdubbeld_Lambert72_31370_v2018-12-12")
+burchten2018_sf <- read_sf("G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2018/Zoogdieren/Hamster", "Hamsterburchten_2018_Meetnet-waarnemingen-ontdubbeld_Lambert72_31370_v2018-12-12")
 
 burchten2018 <- burchten2018_sf %>%
   rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh, hoofdteller = wnr) %>%
@@ -57,7 +59,7 @@ burchten2018 <- burchten2018_sf %>%
   st_drop_geometry() %>%
   select(id_wnm, soort_wet, soort_nl, datum, aantal, zeker, hoofdteller, opmerking, x, y)
 
-burchten2019_sf <- st_read("../data_extern/count_data/hamster", "Hamsterburchten_2019_Meetner-waarnemingen_v14012020_Lambert72")
+burchten2019_sf <- st_read("G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2019/Zoogdieren/Hamster", "Hamsterburchten_2019_Meetner-waarnemingen_v14012020_Lambert72")
 
 burchten2019 <- burchten2019_sf %>%
   rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh, hoofdteller = wnr) %>%
@@ -67,7 +69,7 @@ burchten2019 <- burchten2019_sf %>%
   st_drop_geometry() %>%
   select(id_wnm, soort_wet, soort_nl, datum, aantal, hoofdteller, opmerking, x, y)
 
-burchten2020_sf <- st_read("../data_extern/count_data/hamster", "Hamsterburchten_2020_meetnet_waarnemingen_Lambert72_ontdubbeld")
+burchten2020_sf <- st_read("G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2020/Zoogdieren", "Hamsterburchten_2020_meetnet_waarnemingen_Lambert72_ontdubbeld")
 
 burchten2020 <- burchten2020_sf %>%
   rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh, hoofdteller = wnr, zeker = Zeker) %>%
@@ -96,10 +98,10 @@ burchten_all_sf <- burchten_all %>%
 ## Onderzochte percelen
 
 ```{r}
-percelen_2020_sf_orig <- read_sf("../data_extern/count_data/hamster", "Hamster_percelen_onderzocht_2020_v05012020_Lambert72")
+percelen_2020_sf_orig <- read_sf("G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2020/Zoogdieren", "Hamster_percelen_onderzocht_2020_v05012020_Lambert72")
 
 percelen_2020_sf <- percelen_2020_sf_orig %>%
-  rename(id_perceel = id, aantal_tellers = X.Tellers, opmerking = Bruchten, gewas = Gewas, oppervlakte_ha = opp..ha.) %>%
+  rename(id_perceel = id, aantal_tellers = "#Tellers", opmerking = Bruchten, gewas = Gewas, oppervlakte_ha = "opp (ha)") %>%
   mutate(meetnet = "Hamster",
          datum = as.Date(VisitDate, format = "%d/%m/%Y"),
          type_telling = ifelse(datum > as.Date("2020-06-01"), "zomer", "winter")) %>%
@@ -136,7 +138,7 @@ burchten_all_sf %>%
 # Das
 
 ```{r}
-das_orig <- read.csv2("../data_extern/count_data/das/meetnet_das_2016_2020.csv")
+das_orig <- read.csv2("G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2020/Zoogdieren/meetnet_das_2016_2020.csv")
 
 das <- das_orig %>%
   mutate(meetnet = "Das",
@@ -243,6 +245,7 @@ data_oeverspinnen <- data_oeverspinnen_sf %>%
   
 
 ```
+
 # Mollusken
 
 ```{r}
@@ -431,7 +434,7 @@ data_gladde_slang <- read_sf(data_path, "GladdeSlang_Meetnet&Inhaalslag_2021")
 # Export
 
 ```{r}
-# write_vc(data_extern_burchten, "data_burchten", "../processed", strict = FALSE)
+write_vc(data_extern_burchten, "data_burchten", "../processed", sorting = c("meetnet", "locatie", "datum", "x"), strict = FALSE)
 # write_vc(data_oeverspinnen, "data_oeverspinnen", "../processed", strict = FALSE)
 # write_vc(data_mollusken_locaties, "data_mollusken", "../processed", strict = FALSE)
 # write_vc(data_roestbruine_kniptor, "data_roestbruine_kniptor", "../processed", strict = FALSE)
