@@ -10,10 +10,21 @@ library(tidyverse)
 
 
 ```{r}
-jaardoelen <- read.csv2("../data_extern/monitoring_targets/jaardoelen.csv", stringsAsFactors = FALSE)
+jaardoelen <- read_vc(root =  "../metadata", file = "monitoring_targets")
+
+
 ```
 
+
 ```{r}
-write_vc(jaardoelen, root =  "../metadata", file = "monitoring_targets", sorting = c("meetnet", "jaar"))
+jaardoelen_2022 <- read_csv2( "../metadata/jaardoelen_2022.csv")
+
+jaardoelen_update <- jaardoelen %>%
+  bind_rows(jaardoelen_2022)
+```
+
+
+```{r}
+write_vc(jaardoelen_update, root =  "../metadata", file = "monitoring_targets", sorting = c("meetnet", "jaar"), strict = FALSE)
 ```
 
