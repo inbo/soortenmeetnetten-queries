@@ -12,8 +12,7 @@ library(git2rdata)
 ## Read file with monitoring scheme characteristics that are not available in meetnetten.be
 
 ```{r}
-metadata_file <- read.csv2("../data_extern/meetnetkarakteristieken/meetnetkarakt.csv", stringsAsFactors  = FALSE)
-
+metadata_file <- read_csv2("../metadata/meetnetkarakteristieken.csv")
 ```
 
 ## Derive characteristics from meetnetten.be data
@@ -45,7 +44,7 @@ meetnetten_n_locaties <- locaties %>%
 
 # telperiodes
 telperiodes_taak <- taken %>%
-  filter(jaar == 2021) %>%
+  filter(jaar == 2022) %>%
   select(soortgroep, meetnet, protocol, jaar, taak_start, taak_end) %>%
   unique() %>%
   group_by(meetnet, protocol) %>%
@@ -66,7 +65,7 @@ temp <- bezoeken %>%
   distinct(soortgroep, meetnet, protocol)
 
 telperiodes_wp <- werkpakketten %>%
-  filter(jaar == 2021) %>%
+  filter(jaar == 2022) %>%
   filter(! meetnet %in% telperiodes_taak$meetnet) %>%
   select(meetnet, start_telperiode = wp_start, einde_telperiode = wp_end) %>%
   unique() %>% 
@@ -84,9 +83,9 @@ telperiodes <- telperiodes_taak %>%
 
 ```{r}
 metadata <- metadata_file %>%
-  select(-begin_telperiode, - einde_telperiode) %>%
+  select(-start_telperiode, - einde_telperiode) %>%
   left_join(telperiodes, by = c("soortgroep", "meetnet", "protocol", "generatie")) %>%
-  left_join(meetnetten_n_locaties, by = "meetnet") %>%
+  left_join(meetnetten_n_locaties, by = c("meetnet")) %>%
   select(actief, everything())
 ```
 
