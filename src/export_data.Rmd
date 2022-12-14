@@ -49,6 +49,7 @@ query_bezoeken <- "Select
   P.Name as meetnet,
   PR.i18n->>'name_nl' as protocol, 
   L.name as locatie, 
+  L1.name as hoofdlocatie,
   V.start_date as datum, 
   V.start_time, 
   V.end_time, 
@@ -77,6 +78,7 @@ query_bezoeken <- "Select
     inner join projects_projectgroup PG on PG.id = P.group_id
     inner join fieldwork_visit V on V.project_id = P.id
     inner Join Locations_location L on L.ID = V.location_ID
+    left outer Join Locations_location L1 on L1.ID = L.parent_ID
     inner join Protocols_protocol PR on PR.id = V.protocol_ID
     left outer join projects_task T on T.ID = V.task_id
     inner join accounts_user U on U.ID = V.user_id
@@ -90,11 +92,14 @@ bezoeken_orig <- set_utf8(dbGetQuery(con, query_bezoeken))
 
 bezoeken <- bezoeken_orig %>%
   mutate(jaar = as.numeric(format(datum, "%Y")),
-         doy = as.numeric(format(datum, "%j"))) %>%
+         doy = as.numeric(format(datum, "%j")),
+         sublocatie = ifelse(is.na(hoofdlocatie), NA, locatie),
+         locatie = ifelse(is.na(hoofdlocatie), locatie, hoofdlocatie)) %>%
+  select(-hoofdlocatie) %>%
   group_by(meetnet, protocol, locatie, jaar, visit_id) %>%
   mutate(i_bezoek = rank(doy)) %>%
   ungroup() %>%
-  select(soortgroep, meetnet, protocol, locatie, jaar, datum, doy, i_bezoek, everything()) %>%
+  select(soortgroep, meetnet, protocol, locatie, sublocatie, jaar, datum, doy, i_bezoek, everything()) %>%
   mutate(notes = str_replace_all(notes, "[\r\n]" , " "))
 
 ```
