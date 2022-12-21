@@ -27,7 +27,9 @@ aantallen_planten_visit_id <- read_vc("aantallen_planten", "../raw") %>%
   ungroup()
 ```
 
-## Aantallen ingevoerd in meetnetten
+
+
+## Aantallen ingevoerd in waarnemingen.be
 
 ```{r}
 data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2022/Data niet in Meetnetten.be/Planten - Oplevering data Meetnetten 2022"
@@ -145,17 +147,6 @@ n_distinct(check$locatie)
 #          dist_inactief = ifelse(dist_inactief > 500, NA, dist_inactief))
 ```
 
-```{r,eval=FALSE}
-testje <- planten_2020_orig %>%
-  st_as_sf(coords = c("x", "y"), crs =31370) %>%
-  st_transform(crs = 4326)
-
-locaties_meetnet
-  
-```
-
-
-
 ```{r}
 
 bezoeken_planten <- read_vc("bezoeken", "../raw") %>%
@@ -198,29 +189,21 @@ data_waarnemingen_migratie <- data_extern_locaties %>%
   left_join(bezoeken_planten, by = c("meetnet", "locatie", "datum", "hoofdteller")) %>%
   filter(!aantallen_in_meetnetten | is.na(aantallen_in_meetnetten)) %>%
   rename(afstand_tot_locatie = "dist") %>%
-  mutate(bron = "waarenmingen.be") 
+  mutate(bron = "waarenmingen.be")  %>%
+  select(bron, meetnet, protocol, locatie, afstand_tot_locatie, jaar, datum, hoofdteller, waarnemer_wnm.be = waarnemer, id_wnm = id, code = floroncode,  aantal, x =x_coord, y = y_coord, visit_id, opm)
 
 data_waarnemingen_extra <- data_extern_locaties %>%
   filter(is.na(floroncode)) %>%
   rename(afstand_tot_locatie = "dist") %>%
-  mutate(bron = "waarenmingen.be") 
+  mutate(bron = "waarenmingen.be",
+         nieuwe_locatie = ifelse(nieuwe_locatie == "1.0", "1", nieuwe_locatie)) %>%
+  select(bron, meetnet, locatie, afstand_tot_locatie, nieuwe_locatie, jaar, datum, waarnemer, id_wnm = id,  code = floroncode,  aantal, x = x_coord, y = y_coord, opm)
 
-aantallen_waarnemingen_mn <- data_waarnemingen_migratie %>%
-  filter(!is.na(floroncode)) %>%
-  filter(!is.na(locatie)) %>%
+data_waarnemingen_migratie %>%
   filter(!is.na(visit_id)) %>%
-  select(bron, meetnet, locatie, afstand_tot_locatie, jaar, datum, hoofdteller, waarnemer_wnm.be = waarnemer, id_wnm = id, code = floroncode,  aantal, x =x_coord, y = y_coord, visit_id, opm)
+  write_csv2(file = str_c("../output/controle_plantendata/plantenmeetnetten_migratie_", year_update, ".csv", na = ""))
 
-aantallen_waarnemingen_extra <- data_waarnemingen_extra %>%
-  filter((is.na(floroncode)) | (is.na(locatie))) %>%
-  select(bron, meetnet, locatie, afstand_tot_locatie, jaar, datum, waarnemer, id_wnm = id,  code = floroncode,  aantal, x = x_coord, y = y_coord, opm)
-
-write_vc(data_waarnemingen_migratie, file = str_c("data_waarnemingen_migratie", year_update), root = "../output/controle_plantendata/", strict = FALSE)
-
-write_csv2(aantallen_waarnemingen_mn, 
-           file = str_c("../output/controle_plantendata/plantenmeetnetten_migratie_", year_update, ".csv", na = ""))
-
-write_csv2(aantallen_waarnemingen_extra, 
+write_csv2(data_waarnemingen_extra, 
            file = str_c("../output/controle_plantendata/plantenmeetnetten_extra_", year_update, ".csv", na = ""))
 ```
 
@@ -229,9 +212,8 @@ write_csv2(aantallen_waarnemingen_extra,
 ```{r}
 
 controle_bezoeken <- data_waarnemingen_migratie %>%
-  filter(!is.na(floroncode)) %>%
   filter(is.na(visit_id)) %>%
-  select(id, meetnet, locatie, datum,  floroncode, x_coord, y_coord, waarnemer, opm)
+  select(id_wnm, meetnet, locatie, datum,  code, x, y, waarnemer_wnm.be, opm)
 
 write_csv2(controle_bezoeken, str_c("../output/controle_plantendata/wnm_planten_zonderbezoeken_", year_update, ".csv"))
 ```
@@ -239,7 +221,6 @@ write_csv2(controle_bezoeken, str_c("../output/controle_plantendata/wnm_planten_
 ## Bezoeken zonder waarnemingen
 
 ```{r}
-
 
 bezoeken_planten_zonderdata <- read_vc("bezoeken", "../raw") %>%
     filter(validatie != -1) %>%
@@ -264,7 +245,7 @@ aantallen_planten_meetnetten <- read_sf(dsn = "../raw/planten_puntlocaties.gpkg"
   filter(validatie_bezoek != -1) %>%
   mutate(bron = "meetnetten.be",
          afstand_tot_locatie = 0) %>%
-  select(-soort_w, -beschrijving_floroncode, -protocol, -sample_id, -validatie_bezoek) %>%
+  select(-soort_w, -beschrijving_floroncode,  -sample_id, -validatie_bezoek) %>%
   rename(hoofdteller = waarnemer)
 
 aantallen_meetnetten <- aantallen_planten_meetnetten %>%
@@ -275,13 +256,12 @@ aantallen_meetnetten <- aantallen_planten_meetnetten %>%
 locaties_track <- aantallen_meetnetten %>%
   distinct(meetnet, locatie, visit_id, datum, track)
 
-aantallen_planten <- bind_rows(aantallen_waarnemingen_mn,
+aantallen_planten <- bind_rows(data_waarnemingen_migratie,
                                aantallen_meetnetten) %>%
-  arrange(meetnet, locatie, bron)
+  arrange(meetnet, locatie, bron) %>%
+  select(-schaal)
 
 write_csv2(aantallen_planten, str_c("../processed/data_planten_", year_update,".csv",  na = ""))
-
-write_csv2(aantallen_waarnemingen_extra, str_c("../processed/data_planten_", year_update, "_extra.csv"), na = "")
 
 write_csv2(locaties_track, str_c("../output/controle_plantendata/controle_tracks_", year_update, ".csv"), na = "")
 ```
