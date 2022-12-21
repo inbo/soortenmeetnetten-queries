@@ -3,22 +3,21 @@ amfibieën	Boomkikker	Amfibieën - Larven en metamorfen	Steekproef	3	generatie1	
 amfibieën	Boomkikker	Amfibieën - Larven en metamorfen	Steekproef	3	generatie1	1	2016	EPS	19144	19188	1	60	1
 amfibieën	Boomkikker	Padden en kikkers - Roepkoren	Steekproef	3	generatie1	2	2016	EPS	19083	19173	0	40	1
 amfibieën	Boomkikker	Padden en kikkers - Roepkoren	Steekproef	3	generatie1	2	2016	EPS	19083	19173	1	60	1
-amfibieën	Heikikker	Heikikker - DNA eitjes	Pilootproject	3	generatie1	1	2021	EPS	19052	19112	1	56	1
+amfibieën	Heikikker	Heikikker - DNA eitjes	Pilootproject	3	generatie1	2	2021	EPS	19052	19112	1	59	1
 amfibieën	Kamsalamander	Amfibieën - Fuiken	Steekproef	3	generatie1	2	2017	EPS	19066	19143	0	148	1
 amfibieën	Kamsalamander	Amfibieën - Fuiken	Steekproef	3	generatie1	2	2017	EPS	19066	19143	1	60	1
 amfibieën	Kamsalamander	Amfibieën - Larven en metamorfen	Steekproef	3	generatie1	1	2017	EPS	19144	19188	0	148	1
 amfibieën	Kamsalamander	Amfibieën - Larven en metamorfen	Steekproef	3	generatie1	1	2017	EPS	19144	19188	1	60	1
-amfibieën	Knoflookpad	Knoflookpad - Roepkoren	Integraal	1	generatie1	1	2017	VPS	19066	19112	1	4	1
-amfibieën	Knoflookpad	Padden en kikkers - Roepkoren	Integraal	1	generatie1	2	2017	VPS	19066	19112	1	4	1
+amfibieën	Knoflookpad	Knoflookpad - Roepkoren	Integraal	1	generatie1	2	2017	VPS	19066	19112	1	4	1
 amfibieën	Poelkikker	Padden en kikkers - Roepkoren	Pilootproject	3	generatie1	2	2021	EPS	19113	19143	1	69	1
 amfibieën	Rugstreeppad	Rugstreeppad - Transect	Integraal	3	generatie1	3	2019	EPS	19083	19173	1	49	1
 amfibieën	Vuursalamander	Vuursalamander - Transect	Integraal	1	generatie1	2	2016	VPS	19219	19296	0	8	1
-amfibieën	Vuursalamander	Vuursalamander - Transect	Integraal	1	generatie1	2	2016	VPS	19219	19296	1	32	1
+amfibieën	Vuursalamander	Vuursalamander - Transect	Integraal	1	generatie1	2	2016	VPS	19219	19296	1	33	1
 andere zoogdieren	Das	Burchtentelling das	Integraal	3	generatie1	1	2016	VPS	NA	NA	NA	NA	1
 andere zoogdieren	Hamster	Burchtentelling hamster	Integraal	1	generatie1	1	2016	EPS	NA	NA	1	1	1
 andere zoogdieren	Hazelmuis	Hazelmuis - Transect	Integraal	1	generatie1	2	2016	EPS	19250	19311	1	3	1
-andere zoogdieren	Hazelmuis - Nestbuizen	Hazelmuis - Nestbuizen	Integraal	1	generatie1	2	2020	EPS	19093	19301	1	17	1
-andere zoogdieren	Otter	Otter	Inhaalslag	12	generatie1	1	2018	EPS	NA	NA	1	37	1
+andere zoogdieren	Hazelmuis - Nestbuizen	Hazelmuis - Nestbuizen	Integraal	1	generatie1	4	2020	EPS	19093	19301	1	17	1
+andere zoogdieren	Otter	Otter	Inhaalslag	12	generatie1	1	2018	EPS	19327	19447	1	37	1
 dagvlinders	Aardbeivlinder	Vlinders - Transecten	Integraal	1	generatie1	3	2017	VPS	19113	19143	1	4	1
 dagvlinders	Argusvlinder	Vlinders - Transecten	Steekproef	3	generatie1	3	2016	VPS	19113	19143	0	4	1
 dagvlinders	Argusvlinder	Vlinders - Transecten	Steekproef	3	generatie2	3	2016	VPS	19193	19224	0	4	1
@@ -60,9 +59,9 @@ overige	Lentevuurspin	Lentevuurspin - Transect	Integraal	1	generatie1	1	2016	VPS
 overige	Roestbruine kniptor	Kevers - Feromoonval	Inhaalslag	6	generatie1	1	2018	VPS	19174	19235	0	2	1
 overige	Roestbruine kniptor	Kevers - Feromoonval	Inhaalslag	6	generatie1	1	2018	VPS	19174	19235	1	34	1
 overige	Schavertje	Sprinkhanen - Wegvangst	Integraal	1	generatie1	1	2017	VPS	19205	19265	1	4	1
-overige	Vermiljoenkever	Vermiljoenkever - Schors	Pilootproject	1	generatie1	1	2021	EPS	NA	NA	1	16	1
-overige	Vliegend hert	Vliegend hert - Inhaalslag	Inhaalslag	6	generatie1	6	2017	EPS	NA	NA	1	19	1
-overige	Vliegend hert	Vliegend hert - Transecten	Steekproef	1	generatie1	6	2019	EPS	NA	NA	1	19	1
+overige	Vermiljoenkever	Vermiljoenkever - Larven	Pilootproject	1	generatie1	1	2021	EPS	19024	19357	1	16	1
+overige	Vliegend hert	Vliegend hert - Inhaalslag	Inhaalslag	6	generatie1	6	2017	EPS	NA	NA	1	19	0
+overige	Vliegend hert	Vliegend hert - Transect	Steekproef	1	generatie1	6	2019	EPS	19113	19189	1	19	1
 overige	Zadelsprinkhaan	Sprinkhanen - Gebiedstelling	Integraal	1	generatie1	2	2016	VPS	19229	19250	1	6	1
 planten	Bleekgeel blaasjeskruid	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	NA	NA	NA	NA	1
 planten	Driekantige bies	Vaatplanten - Oppervlakte	Integraal	3	generatie1	1	2016	VPS	19144	19265	1	10	1
@@ -95,4 +94,6 @@ vleermuizen	Grijze Grootoorvleermuis	Vleermuizen - Uitvliegtelling	Integraal	1	g
 vleermuizen	Ingekorven Vleermuis	Vleermuizen - Uitvliegtelling	Integraal	1	generatie1	2	2021	EPS	NA	NA	1	9	1
 vleermuizen	Ingekorven Vleermuis	Vleermuizen - Zoldertelling	Integraal	1	generatie1	1	2021	EPS	19188	19214	1	9	1
 vleermuizen	Laatvlieger	Vleermuizen - Uitvliegtelling	Integraal	1	generatie1	2	2021	EPS	19144	19209	1	17	1
+vleermuizen	Vleermuizen - Wintertellingen	Vleermuizen - Wintertelling	Integraal	1	generatie1	1	2021	EPS	NA	NA	0	3060	1
+vleermuizen	Vleermuizen - Wintertellingen	Vleermuizen - Wintertelling	Integraal	1	generatie1	1	2021	EPS	NA	NA	1	221	1
 vogels	Algemene Broedvogelmonitoring (ABV)	Algemene Broedvogelmonitoring	Steekproef	3	generatie1	3	2007	EPS	19052	19189	1	1104	1
