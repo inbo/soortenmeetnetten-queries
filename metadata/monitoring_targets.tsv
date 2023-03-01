@@ -22,7 +22,7 @@ Beekrombout	3	2018	5	Locaties	NA
 Beekrombout	3	2019	2	Locaties	NA
 Beekrombout	3	2020	4	Locaties	NA
 Beekrombout	3	2021	1	Locaties	NA
-Beekrombout	3	2022	3	Locaties	NA
+Beekrombout	3	2022	1	Locaties	NA
 Boomkikker	3	2016	20	Locaties	60
 Boomkikker	3	2017	12	Nieuwe locaties	60
 Boomkikker	3	2018	12	Nieuwe locaties	60
@@ -82,7 +82,7 @@ Grote weerschijnvlinder	3	2021	10	Locaties	NA
 Grote weerschijnvlinder	3	2022	15	Locaties	NA
 Hamster	1	2020	50	Hectare	NA
 Hamster	1	2021	50	Hectare	NA
-Hamster	1	2022	50	Hectare	NA
+Hamster	1	2022	349	Hectare	NA
 Hazelmuis	2	2016	16	Locaties	NA
 Hazelmuis	2	2017	16	Locaties	NA
 Hazelmuis	2	2018	16	Locaties	NA
@@ -94,7 +94,7 @@ Hazelmuis - Nestbuizen	2	2020	4	Locaties	NA
 Hazelmuis - Nestbuizen	2	2021	17	Locaties	NA
 Hazelmuis - Nestbuizen	2	2022	17	Locaties	NA
 Heikikker	1	2021	12	Locaties	60
-Heikikker	1	2022	12	Locaties	60
+Heikikker	3	2022	12	Nieuwe locaties	60
 Heivlinder	3	2016	10	Locaties	30
 Heivlinder	3	2017	6	Nieuwe locaties	30
 Heivlinder	3	2018	6	Nieuwe locaties	30
@@ -171,7 +171,7 @@ Oranje zandoogje	3	2022	6	Nieuwe locaties	30
 Otter	1	2021	13	Locaties	NA
 Otter	1	2022	13	Locaties	NA
 Poelkikker	1	2021	12	Locaties	60
-Poelkikker	1	2022	12	Locaties	60
+Poelkikker	3	2022	12	Nieuwe locaties	60
 Rivierrombout	6	2016	40	Bezoeken	NA
 Rivierrombout	5	2017	10	Locaties	NA
 Rivierrombout	5	2018	10	Locaties	NA
@@ -201,7 +201,7 @@ Speerwaterjuffer	2	2018	5	Locaties	NA
 Speerwaterjuffer	2	2019	6	Locaties	NA
 Speerwaterjuffer	2	2020	6	Locaties	NA
 Speerwaterjuffer	2	2021	6	Locaties	NA
-Speerwaterjuffer	2	2022	8	Locaties	NA
+Speerwaterjuffer	2	2022	6	Locaties	NA
 Variabele waterjuffer	3	2017	6	Nieuwe locaties	30
 Variabele waterjuffer	3	2018	6	Nieuwe locaties	30
 Variabele waterjuffer	3	2019	6	Nieuwe locaties	30
@@ -222,6 +222,7 @@ Vliegend hert	3	2017	20	Bezoeken	NA
 Vliegend hert	3	2018	15	Bezoeken	NA
 Vliegend hert	3	2019	15	Bezoeken	NA
 Vliegend hert	5	2022	12	Locaties	NA
+Vroedmeesterpad	1	2022	15	Locaties	NA
 Vroege glazenmaker	3	2017	6	Nieuwe locaties	30
 Vroege glazenmaker	3	2018	6	Nieuwe locaties	30
 Vroege glazenmaker	3	2019	6	Nieuwe locaties	30
