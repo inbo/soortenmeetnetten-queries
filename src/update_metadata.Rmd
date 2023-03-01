@@ -71,8 +71,18 @@ telperiodes_wp <- werkpakketten %>%
   unique() %>% 
   inner_join(temp, by = "meetnet")
 
+telperiodes_metadata <- metadata_file %>%
+  filter(! meetnet %in% telperiodes_taak$meetnet) %>%
+  filter(! meetnet %in% telperiodes_wp$meetnet) %>%
+  mutate(start_telperiode = as.Date(start_telperiode, format = "%d/%m/%Y"),
+         einde_telperiode = as.Date(einde_telperiode, format = "%d/%m/%Y")) %>%
+  select(meetnet, protocol, start_telperiode, einde_telperiode) %>%
+  unique() %>% 
+  inner_join(temp, by = c("meetnet", "protocol"))
+  
 telperiodes <- telperiodes_taak %>%
   bind_rows(telperiodes_wp) %>%
+   bind_rows(telperiodes_metadata) %>%
   arrange(meetnet, protocol) %>%
   mutate(protocol = ifelse(meetnet == "Grote weerschijnvlinder", "Vlinders - Gebiedstelling", protocol),
          generatie = ifelse(is.na(generatie), "generatie1", generatie))
