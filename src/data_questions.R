@@ -393,6 +393,12 @@ boomkikker_data <-get_counts_smp() %>%
 
 write_csv2(boomkikker_data, "output/meetnetten_boomkikker_2021-10-04.csv")
 
+locaties_boomkikker_active <- locaties_boomkikker %>%
+  filter(is_active) %>%
+  select(meetnet, locatie)
+
+st_write(locaties_boomkikker_active, "processed/locaties_meetnet_boomkikker", driver = "ESRI Shapefile")
+
 ########################################################################
 
 locaties_rugstreeppad <- get_locations_smp() %>%
@@ -512,3 +518,58 @@ tellingen_beverlo <- aantallen_beverlo %>%
 write_csv2(tellingen_beverlo, "processed/tellingen_beverlo.csv") 
 
 st_write(locaties_beverlo, "processed/locaties_beverlo.gpkg")
+
+
+####
+
+tellers_libellen <- meetnetten_users %>%
+  filter(soortgroep == "libellen") %>%
+  filter(role == 10) %>%
+  group_by(first_name, last_name, email) %>%
+  summarise(meetnetten = str_c(unique(meetnet), collapse = "; ")) %>%
+  ungroup() %>%
+  filter(first_name != "")
+
+write_csv2(tellers_libellen, "output/tellers_libellenmeetnetten.csv")
+
+aantallen_rombout <- get_counts_smp() %>%
+  filter(meetnet %in% c("Rivierrombout", "Beekrombout"))
+
+visits_rombout <- get_visits_smp() %>%
+  filter(meetnet %in% c("Rivierrombout", "Beekrombout")) %>%
+  select(visit_id, bezoek_status, voor_analyse, notes)
+
+aantallen_beekrombout <- aantallen_rombout %>%
+  filter(locatie == "Postels vaartje") %>%
+  filter(primaire_soort) %>%
+  group_by(meetnet, locatie, datum, visit_id, levensstadium) %>%
+  summarise(aantal = sum(aantal)) %>%
+  ungroup() %>%
+  left_join(visits_rombout, by = c("visit_id")) %>%
+  select(meetnet, locatie, datum, bezoek_status, voor_analyse, levensstadium, aantal, notes) %>%
+  filter(voor_analyse) 
+  
+aantallen_rivierrombout <- aantallen_rombout %>%
+  filter(primaire_soort) %>%
+  filter(meetnet == "Rivierrombout") %>%
+  group_by(meetnet, locatie, datum, visit_id, levensstadium) %>%
+  summarise(aantal = sum(aantal)) %>%
+  ungroup() %>%
+  left_join(visits_rombout, by = c("visit_id")) %>%
+  select(meetnet, locatie, datum, bezoek_status, voor_analyse,  levensstadium, aantal, notes) %>%
+  filter(voor_analyse) 
+
+write_csv2(aantallen_beekrombout, "output/aantallen_beekrombout.csv")
+write_csv2(aantallen_rivierrombout, "output/aantallen_rivierrombout.csv")
+
+#########################################
+
+aantallen_vleermuizen <- get_counts_smp() %>%
+  filter(meetnet %in% "Vleermuizen - Wintertellingen") %>%
+  filter(jaar >= 2020) %>%
+  filter(primaire_soort) %>%
+  group_by(soort_wet) %>%
+  summarise(aantal_tot = sum(aantal)) %>%
+  ungroup()
+
+
