@@ -13,7 +13,7 @@ library(readxl)
 library(lubridate)
 library(units)
 
-year_update <- 2021
+year_update <- 2022
 ```
 
 # Hamster en Das
@@ -29,9 +29,9 @@ data_burchten <- read_vc(file = "data_burchten", root = "../processed") %>%
 
 ```{r}
 
-data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2021/Data niet in Meetnetten.be/Hamster - Oplevering data Meetnetten 2021"
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2022/Data niet in Meetnetten.be/Hamster - Oplevering data Meetnetten 2022"
 
-burchten_nieuw_sf <- read_sf(data_path, "Hamsterburchten 2021_meetnet_waarnemingen_Lambert72_ontdubbeld_finale versie",
+burchten_nieuw_sf <- read_sf(data_path, "Meetnet Hamster_2022_waarnemingen",
                              crs = 31370)
 
 burchten_nieuw <- burchten_nieuw_sf %>%
@@ -39,10 +39,8 @@ burchten_nieuw <- burchten_nieuw_sf %>%
   mutate(meetnet = "Hamster",
          protocol = "Hamster - Burcht",
          locatie = "Widooie",
-         datum = as.Date(datum, format = "%d-%m-%Y"),
+         datum = as.Date(datum, format = "%Y-%m-%d"),
          jaar = year(datum),
-         zeker = ifelse(zeker == "J", "ja",
-              ifelse(zeker == "N", "nee", NA)),
          x = st_coordinates(geometry)[, 1],
          y = st_coordinates(geometry)[, 2],
          visit_id = str_c("extern_", meetnet, jaar, 1:nrow(burchten_nieuw_sf))) %>%
@@ -69,29 +67,26 @@ if (nrow(burchten_nieuw) > 0) {
 
 ```{r}
 
-percelen_update_sf_orig <- read_sf(data_path, "Hamster_percelen_onderzocht_2021_Lambert72_finale versie")
+percelen_update_sf_orig <- read_sf(data_path, "Meetnet Hamster_2022_percelen")
 
 percelen_sf <- percelen_update_sf_orig %>%
-  rename(id_perceel = id, aantal_tellers = X.Tellers, opmerking = burchten_1, gewas = Gewas, oppervlakte_ha = opp..ha.) %>%
+  rename(id_perceel = id, aantal_tellers = `#tellers`,   oppervlakte_ha = `opp (ha)`) %>%
   mutate(meetnet = "Hamster",
-         datum = as.Date(VisitDate, format = "%d/%m/%Y"),
+         datum = as.Date(datum, format = "%d/%m/%Y"),
          type_telling = ifelse(datum > as.Date("2021-06-01"), "zomer", "winter")) %>%
-  select(meetnet, id_perceel, datum, type_telling, aantal_tellers, gewas, oppervlakte_ha, opmerking)
+  select(meetnet, id_perceel, datum, type_telling, aantal_tellers, gewas, oppervlakte_ha)
 
 oppervlakte_onderzocht <- percelen_sf %>%
   mutate(area_calc = drop_units(st_area(geometry))/10000) %>%
   st_drop_geometry() %>%
   group_by(type_telling) %>%
-  summarise(oppervlakte_ha_totaal = sum(oppervlakte_ha),
-            area_calc_totaal = round(sum(area_calc), 1),
+  summarise(area_calc_totaal = round(sum(area_calc), 1),
             n_bezoeken = n_distinct(datum)) %>%
   ungroup()
 
 
 
 ```
-
-
 
 
 ```{r}
