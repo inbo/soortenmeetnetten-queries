@@ -4,6 +4,7 @@ library(sf)
 library(lubridate)
 library(n2khab)
 library(leaflet)
+library(readxl)
 
 # remotes::install_github("inbo/n2khab",
 #                         build_vignettes = TRUE,
@@ -200,6 +201,8 @@ write.csv2(visits_libellen, "output/bezoeken_libellen_id_wnm_account.csv", row.n
 ########################################################
 # Rapport afwijking soortenbesluit
 
+year_rapportage <- 2022
+
 aantallen <- read_vc("raw/aantallen")
 
 aantallen_planten_orig <- read_vc("raw/aantallen_planten") 
@@ -228,29 +231,31 @@ aantallen_planten <- aantallen_planten_orig %>%
 aantallen_rapportageANB <- aantallen %>%
   bind_rows(aantallen_planten) %>%
   filter(levensstadium != "") %>%
-  mutate(levensstadium = ifelse(meetnet == "Hazelmuis", "nest", levensstadium),
-         meetnet = ifelse(meetnet == "Hazelmuis - Nestbuizen", "Hazelmuis", meetnet)) %>%
-  filter(jaar == 2020) %>%
-  group_by( meetnet, levensstadium, locatie, visit_id) %>%
+  mutate(levensstadium = ifelse(meetnet == "Hazelmuis", "nest", levensstadium)) %>%
+  filter(jaar == year_rapportage) %>%
+  group_by( meetnet, levensstadium, locatie, visit_id, soort_nl, soort_wet, primaire_soort) %>%
   summarise(aantal_bezoek = sum(aantal,na.rm=TRUE)) %>%
-  group_by(meetnet, levensstadium, locatie) %>%
+  group_by(meetnet, soort_nl, soort_wet, primaire_soort, levensstadium, locatie) %>%
   summarise(aantal_locatie = sum(aantal_bezoek),
             maxTelling_locatie = max(aantal_bezoek),
             n_bezoeken = n()) %>%
-  group_by(meetnet, levensstadium) %>%
+  group_by(meetnet, levensstadium, primaire_soort, soort_nl, soort_wet) %>%
   summarise(aantalGeteldTotaal = round(sum(aantal_locatie,na.rm = TRUE), 0),
             somMaxGeteldPerLocatie = round(sum(maxTelling_locatie, na.rm=TRUE), 0),
             nBezoeken = sum(n_bezoeken) ,
             nLocaties = n())%>%
+  ungroup() %>%
   filter(aantalGeteldTotaal > 0) %>%
-  rename('Nederlandse naam' = meetnet, specimens = levensstadium) %>%
-  mutate(datum = 2020,
+  rename( 'Nederlandse naam' = soort_nl, 'wetenschappelijke naam' = soort_wet, specimens = levensstadium) %>%
+  mutate(datum = year_rapportage,
          locatie = "Vlaanderen",
          impact = "geen",
          tijdstip = "Onbekend") %>%
-  select('Nederlandse naam', specimens, aantalGeteldTotaal, datum, impact, locatie, tijdstip, everything())
+  filter(primaire_soort) %>%
+  select(meetnet, 'Nederlandse naam', 'wetenschappelijke naam', specimens, aantalGeteldTotaal, datum, impact, locatie, tijdstip, everything()) %>%
+  select(-primaire_soort)
 
-write.csv2(aantallen_rapportageANB, "output/150601_Afwijkingsvergunning_ANB_BL_FF_V16_00034_VB_rapportage_2020_bijlage.csv", row.names = FALSE)
+write_excel_csv2(aantallen_rapportageANB, "Output/Afwijkingsvergunning_21-202358_rapportage_2023_resultaten_2022_bijlage.csv", na = "")
 
 
 ########################################################
