@@ -13,6 +13,9 @@ library(readxl)
 library(lubridate)
 library(units)
 
+library(conflicted)
+conflicts_prefer(dplyr::filter())
+
 year_update <- 2022
 ```
 
@@ -230,23 +233,40 @@ write_vc(data_oeverspinnen, root = "../processed",file =  "data_oeverspinnen", s
 # Mollusken
 
 ```{r}
-data_mollusken_2020 <- read.csv2("../data_extern/count_data/mollusken/P-CO-000385_Mollusken_wbe_2020_Dump20201201__ALLES_UNIEK.csv", stringsAsFactors = FALSE) %>%
+
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/"
+
+data_mollusken_2020 <- read_csv2(file.path(data_path, "2020/mollusken/P-CO-000385_Mollusken_wbe_2020_Dump20201201__ALLES_UNIEK.csv")) %>%
   select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, precisie, opm = bijzonderheden) %>%
   mutate(id = as.character(id),
          datum = as.Date(datum, format = "%Y-%m-%d"),
          naam_nl = ifelse(naam_nl == "Zegge-korfslak", "Zeggekorfslak", naam_nl))
 
-data_mollusken_2019 <- read_sf(dsn = "../data_extern/count_data/mollusken", layer = "Export_waarnemingen_2019_molluskenmeetnetten") %>%
+data_mollusken_2019 <- read_sf(dsn = file.path(data_path, "2019/mollusken"), layer = "Export_waarnemingen_2019_molluskenmeetnetten") %>%
   st_drop_geometry() %>%
   select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, precisie, opm = bijzonderh) %>%
   mutate(id = as.character(id),
          datum = as.Date(datum, format = "%d-%m-%Y"))
 
-data_mollusken_2016_2018 <- read_sf(dsn = "../data_extern/count_data/mollusken", layer = "Mollusken 2016-2018-10-30 export wnbe") %>%
+data_mollusken_2016_2018 <- read_sf(dsn = file.path(data_path, "2019/mollusken"), layer = "Mollusken 2016-2018-10-30 export wnbe") %>%
   st_drop_geometry() %>%
   select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, precisie, opm = bijzonderh) %>%
   mutate(id = as.character(id),
          datum = as.Date(datum, format = "%Y-%m-%d"))
+
+data_mollusken_extra <-  read_sf(dsn = file.path(data_path, "2019/mollusken"), "Slak-in-Du_restgegevens_niet_in_wn.be_2013-2018_WGS84") %>%
+  st_transform(crs = 31370) %>%
+  filter(Nederlands == "Nauwe korfslak") 
+
+data_mollusken_extra <- data_mollusken_extra %>%
+  mutate(opm = str_c("aantal = ", Aantal, "; gedrag = ", Gedrag),
+         aantal = 1,
+         id = str_c("slak-in-du", 1:nrow(data_mollusken_extra))) %>%
+  st_drop_geometry() %>%
+  mutate(x = st_coordinates(data_mollusken_extra)[,1],
+         y = st_coordinates(data_mollusken_extra)[,2]) %>%
+  select(id, naam_nl = Nederlands, naam_lat = Wetenschap, datum = Datum, aantal, gebied = Gebied, x , y , opm) %>%
+  mutate(datum = as.Date(datum, format = "%d-%m-%Y"))
 
 data_mollusken_ps_bs <- bind_rows(data_mollusken_2016_2018,
                            data_mollusken_2019,
@@ -254,9 +274,28 @@ data_mollusken_ps_bs <- bind_rows(data_mollusken_2016_2018,
   filter(naam_nl %in% c("Platte schijfhoren", "Bataafse stroommossel")) %>%
   filter(!is.na(x))
 
-data_mollusken <- read_excel("../data_extern/count_data/mollusken/INBODATAVR-277_divers_wbe_VL_Dump20210524.xlsx") %>%
-  bind_rows(read_excel("../data_extern/count_data/mollusken/INBODATAVR-277_divers_wbe_VL_Dump20210524_bijkomend.xlsx")) %>%
+data_path_distribution <- "G:/Mijn Drive/Soortenmeetnetten/Meetnetlocaties & protocollen/Mollusken/Verspreidingsdata/datavraag_wnm_2021-05-24"
+
+data_mollusken <- read_excel(file.path(data_path_distribution, "INBODATAVR-277_divers_wbe_VL_Dump20210524.xlsx")) %>%
+  bind_rows(read_excel(file.path(data_path_distribution,"/INBODATAVR-277_divers_wbe_VL_Dump20210524_bijkomend.xlsx"))) %>%
   select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, precisie, opm = bijzonderheden) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%Y-%m-%d"),
+         naam_nl = ifelse(naam_nl == "Zegge-korfslak", "Zeggekorfslak", naam_nl)) %>%
+  bind_rows(data_mollusken_ps_bs) %>%
+  bind_rows(data_mollusken_extra) %>%
+  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld"),
+         meetnet = naam_nl)
+
+data_zeggekorfslak_2022 <- read_sf(dsn = file.path(data_path, "2022/data niet in meetnetten.be/zeggekorfslak"), "Zeggekorfslak_Vlaanderen_20230122") 
+
+data_zeggekorfslak_2022 <- data_zeggekorfslak_2022 %>%
+  mutate(x = st_coordinates(data_zeggekorfslak_2022)[,1],
+         y = st_coordinates(data_zeggekorfslak_2022)[,2]) %>%
+  st_drop_geometry() %>%
+  mutate(id = as.character(id)) %>%
+  anti_join(data_mollusken, by = "id") %>%
+  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, precisie, opm = bijzonderh) %>%
   mutate(id = as.character(id),
          datum = as.Date(datum, format = "%Y-%m-%d"),
          naam_nl = ifelse(naam_nl == "Zegge-korfslak", "Zeggekorfslak", naam_nl)) %>%
@@ -264,24 +303,30 @@ data_mollusken <- read_excel("../data_extern/count_data/mollusken/INBODATAVR-277
   mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld"),
          meetnet = naam_nl)
 
+data_mollusken <- data_mollusken %>%
+  bind_rows(data_zeggekorfslak_2022) %>%
+  arrange(meetnet, datum)
+
 # locaties_mollusken_actief_sf <- read_sf("../raw/meetnetten_locaties.gpkg", "locaties") %>%
 #   filter(soortgroep == "mollusken") %>%
 #   filter(is_active) %>%
 #   select(meetnet, locatie) %>%
 #   st_transform(crs = 31370) 
 
-pot_leefgebied_zeggekorfslak <- read_sf(dsn = "../data_extern/sampleframe/Zeggekorfslak_Lambert1972_versie2018-03-14", "Zeggekorfslak_Lambert1972_versie2018-03-14") %>%
+locations_path <- "G:/Mijn Drive/Soortenmeetnetten/Meetnetlocaties & protocollen/Mollusken/Shapefile_Gebieden/Unzipped"
+
+pot_leefgebied_zeggekorfslak <- read_sf(dsn = locations_path, "Zeggekorfslak_Lambert1972_versie2018-03-14") %>%
   select(meetnet = Meetnet, locatie = Naam)
 
-pot_leefgebied_platte_schijfhoorn <- read_sf(dsn = "../data_extern/sampleframe/PlatteSchijfhoren_Lambert1972_versie2018-03-14", "PlatteSchijfhoren_Lambert1972_versie2018-03-14") %>%
+pot_leefgebied_platte_schijfhoorn <- read_sf(dsn = locations_path, "PlatteSchijfhoren_Lambert1972_versie2018-03-14") %>%
   select(meetnet = Meetnet, locatie = Naam) %>%
   mutate(meetnet = "Platte schijfhoren")
 
-pot_leefgebied_nauwe_korfslak <- read_sf(dsn = "../data_extern/sampleframe/NauweKorfslak_Lambert1972_versie2018-03-14", "NauweKorfslak_Lambert1972_versie2018-03-14") %>%
+pot_leefgebied_nauwe_korfslak <- read_sf(dsn = locations_path, "NauweKorfslak_Lambert1972_versie2018-03-14") %>%
   select(meetnet = Meetnet, locatie = Naam) %>%
   mutate(meetnet = "Nauwe korfslak")
 
-pot_leefgebied_bataafse_stroommossel <- read_sf(dsn = "../data_extern/sampleframe/BataafseStroommossel_Lambert1972_versie2018-03-14", "BataafseStroommossel_Lambert1972_versie2018-03-14") %>%
+pot_leefgebied_bataafse_stroommossel <- read_sf(dsn = locations_path, "BataafseStroommossel_Lambert1972_versie2018-03-14") %>%
   select(meetnet = Meetnet, locatie = Naam) %>%
   mutate(meetnet = "Bataafse stroommossel")
 
@@ -318,15 +363,21 @@ closest_location <- function(meetnet_select, observations) {
 }
 
 data_mollusken_by_meetnet <- data_mollusken_by_meetnet %>%
-  mutate(data_locations_actief = map2(meetnet, data, closest_location_actief))
+  mutate(data_locations = map2(meetnet, data, closest_location))
 
 data_mollusken_locaties <- data_mollusken_by_meetnet %>%
-  select(data_locations_actief) %>%
-  unnest(data_locations_actief) %>%
+  select(data_locations) %>%
+  unnest(data_locations) %>%
   mutate(locatie = ifelse(dist > 500, NA, locatie)) %>%
   rename(dist_to_pot_leefgebied = dist) %>%
   mutate(jaar = as.numeric(format(datum, "%Y"))) %>%
   select(meetnet, jaar, locatie, gebied, datum, id, everything())
+
+check <- data_mollusken_locaties %>%
+  group_by(id) %>%
+  filter(n() > 1)
+
+write_vc(data_mollusken_locaties, root =  "../processed/", file = "data_mollusken", sorting = c("id", "kleed"), strict = FALSE )
 
 ```
 
