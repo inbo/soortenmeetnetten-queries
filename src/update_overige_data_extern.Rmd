@@ -294,7 +294,6 @@ data_zeggekorfslak_2022 <- data_zeggekorfslak_2022 %>%
          y = st_coordinates(data_zeggekorfslak_2022)[,2]) %>%
   st_drop_geometry() %>%
   mutate(id = as.character(id)) %>%
-  anti_join(data_mollusken, by = "id") %>%
   select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, precisie, opm = bijzonderh) %>%
   mutate(id = as.character(id),
          datum = as.Date(datum, format = "%Y-%m-%d"),
@@ -304,6 +303,7 @@ data_zeggekorfslak_2022 <- data_zeggekorfslak_2022 %>%
          meetnet = naam_nl)
 
 data_mollusken <- data_mollusken %>%
+  anti_join(data_zeggekorfslak_2022, by = "id") %>%
   bind_rows(data_zeggekorfslak_2022) %>%
   arrange(meetnet, datum)
 
