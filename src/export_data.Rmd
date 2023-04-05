@@ -36,6 +36,9 @@ source("connect_db.R")
 
 con <- connect_inbo_dbase("S0008_00_Meetnetten")
 
+test <- dbReadTable(con, "staging_Meetnetten.fieldwork_visit")
+
+
 ```
 
 ## Queries
@@ -199,6 +202,7 @@ query_aantallen <- "select PG.name as soortgroep
 where 1=1
     and P.name <> 'Algemene Broedvogelmonitoring (ABV)'
     and P.name <> 'Algemene Vlindermonitoring'
+    and P.name <> 'Vleermuizen - Wintertellingen'
     and SA.notes <> 'dummy sample'
     and PG.name <> 'planten'
     and V.validation_status <> -1 --afgekeurd
@@ -345,13 +349,14 @@ query_aantallen_abv <- "select PG.name as soortgroep
     left outer join projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
 where 1=1
     and P.name = 'Algemene Broedvogelmonitoring (ABV)'
+    and V.validation_status <> -1 --afgekeurd
 Order by PG.name
     , P.name
     , L.Name
     , V.start_date
     , L1.Name"
 
-aantallen_wintertellingen <- set_utf8(dbGetQuery(con, query_aantallen_abv)) 
+aantallen_abv <- set_utf8(dbGetQuery(con, query_aantallen_abv)) 
 
 write_vc(aantallen_abv, "aantallen_abv", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id", "soort_nl"), strict = FALSE)
 
@@ -387,6 +392,7 @@ query_aantallen_wintertellingen <- "select PG.name as soortgroep
     left outer join projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
 where 1=1
     and P.name = 'Vleermuizen - Wintertellingen'
+    and V.validation_status <> -1 --afgekeurd
 Order by PG.name
     , P.name
     , L.Name
@@ -518,6 +524,86 @@ Order by L.Name
 
 aantal_gentiaanblauwtje <- set_utf8(dbGetQuery(con, query_aantallen_gb)) %>%
   filter(!is.na(soort_nl))
+```
+
+
+```{r}
+
+query_aantallen_nb <- "select PG.name as soortgroep
+    , P.name as meetnet
+    , L.name as locatie
+    , L1.name as sublocatie
+    , PR.i18n->>'name_nl' as protocol
+    , V.id as visit_id
+    , V.start_date as datum
+    , SA.Not_Counted as niet_geteld
+    , SA.is_complete as checklist
+    , SA.Notes as opmerkingen
+    , O.species_ID
+    , SP.i18n->>'name_nl' as soort_nl
+    , SP.scientific_name as soort_wet
+    , PS.is_primary as primaire_soort
+    , O.sample_id
+    , O.sex as geslacht
+    , O.id as observation_id
+    , ACT.i18n->>'name_nl' as activiteit
+    , LS.i18n->>'name_nl' as levensstadium
+    , sc.i18n ->>'name_nl' as observation_type
+    , scc.code
+    , scc.description
+    , O.number_min as aantal
+ from Projects_project P
+    inner join projects_projectgroup PG on PG.id = P.group_id
+    inner join fieldwork_visit V on V.project_ID = P.ID
+    left Outer join protocols_protocol PR on PR.id = V.protocol_id
+    left outer join fieldwork_sample SA on SA.visit_ID = V.ID
+    left outer join fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join Species_species SP on SP.ID = O.species_id
+    left outer join species_activity ACT on ACT.id = O.activity_id
+    left outer join species_lifestage LS on LS.id = O.life_stage_id
+    left outer join Locations_location L ON L.ID = V.location_ID
+    left outer Join Locations_location L1 on L1.ID = SA.location_id
+    left outer join accounts_user U on U.ID = V.user_id
+    left outer join projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+    left join protocols_scale sc on sc.id = o.scale_id
+    left join protocols_scalecode scc on scc.id = o.scale_code_id
+where 1=1
+and v.project_id = 70 --Hazelmuis nestbuizen
+Order by PG.name
+    , P.name
+    , L.Name
+    , V.start_date
+    , L1.Name"
+
+aantal_hazelmuis_nestbuizen <- set_utf8(dbGetQuery(con, query_aantallen_nb)) %>%
+  filter(!is.na(soort_nl))
+
+query_nestbuizen <- "select v.id as visit_id
+, l.name as visit_location
+, v.start_date as visit_date
+, s.id as sample_id
+, ls.name as sample_location
+, o.id as observation_id
+, sp.name as species
+, li.i18n ->>'name_nl' as lifestage
+, ac.name as activity
+, sc.i18n ->>'name_nl' as observation_type
+, scc.code
+, scc.description
+, o.number_min as count
+from fieldwork_visit v
+inner join locations_location l on l.id = v.location_id
+left join fieldwork_sample s on s.visit_id = v.id
+left join locations_location ls on ls.id = s.location_id
+left join fieldwork_observation o on o.sample_id = s.id
+left join species_species sp on sp.id = o.species_id
+left join species_lifestage li on li.id = o.life_stage_id
+left join species_activity ac on ac.id = o.activity_id
+left join protocols_scale sc on sc.id = o.scale_id
+left join protocols_scalecode scc on scc.id = o.scale_code_id
+where 1=1
+and v.project_id = 70 --Hazelmuis nestbuizen
+and (o.number_min > 0 or o.number_min is null)"
 ```
 
 
@@ -899,8 +985,9 @@ dbDisconnect(con)
 
 write_vc(aantallen, "aantallen", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id"), strict = FALSE)
 write_vc(aantal_gentiaanblauwtje, "aantallen_gentiaanblauwtje", root = "../raw", sorting = c("locatie", "visit_id", "sample_id", "plant", "stengel", "knop"), strict = FALSE)
+write_vc(aantal_hazelmuis_nestbuizen, "aantal_hazelmuis_nestbuizen", root = "../raw", sorting = c("locatie", "sublocatie", "visit_id"), strict = FALSE)
 write_vc(aantallen_planten, "aantallen_planten", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id"), strict = FALSE)
-write_vc(bezoeken, "bezoeken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id"), strict = FALSE)
+write_vc(bezoeken, "bezoeken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "sublocatie", "visit_id"), strict = FALSE)
 write_vc(werkpakketten, "werkpakketten", root = "../raw", sorting = c("meetnet", "werkpakket"), strict = FALSE)
 write_vc(werkpakketten_locaties, "werkpakketten_locaties", root = "../raw", sorting = c("meetnet", "werkpakket", "locatie"), strict = FALSE)
 write_vc(taken, "taken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "werkpakket"), strict = FALSE)

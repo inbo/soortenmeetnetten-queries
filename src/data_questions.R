@@ -363,10 +363,10 @@ write.csv2(locaties_vlinders, "output/vlindermeetnetten_transecten.csv", row.nam
 
 data_hamster <- read_vc("processed/data_burchten") %>%
   filter(meetnet == "Hamster") %>%
-  select(meetnet, protocol, locatie, datum, soort_wet, soort_nl, aantal, x, y) %>%
+  select(meetnet, protocol, locatie, datum, soort_wet, soort_nl, aantal, zeker, opmerking, x, y) %>%
   arrange(datum)
 
-write_csv2(data_hamster, "output/meetnetten_burchten_hamster_2016_2020.csv")
+write_csv2(data_hamster, "output/meetnetten_burchten_hamster_2016_2022.csv")
 
 ########################################
 
@@ -577,4 +577,78 @@ aantallen_vleermuizen <- get_counts_smp() %>%
   summarise(aantal_tot = sum(aantal)) %>%
   ungroup()
 
+######################################
+
+bezoeken <- get_visits_smp() %>%
+  filter(jaar >= 2012) %>%
+  select(visit_id, bezoek_status, voor_analyse, notes)
+
+check <- bezoeken %>%
+  distinct(soortgroep,meetnet, protocol)
+
+aantallen <- get_counts_smp() 
+  
+aantallen_select <- aantallen %>%
+  filter(primaire_soort) %>%
+  semi_join(bezoeken, by = "visit_id") %>%
+  select(soortgroep, meetnet, locatie, protocol,  datum, visit_id, sublocatie, sample_id, soort_nl, soort_wet, activiteit, geslacht, levensstadium, aantal, x, y)
+
+data_meetneten <- aantallen_select %>%
+  arrange(soortgroep, meetnet, datum) %>%
+  inner_join(bezoeken, by = "visit_id")
+
+write_csv2(data_meetneten, "output/datavraag_luis/counts_meetnetten.csv")
+
+aantallen_abv <- read_vc("raw/aantallen_abv")
+
+data_meetneten_abv <- aantallen_abv %>%
+  arrange(meetnet, datum) %>%
+  select(soortgroep, meetnet, locatie, protocol,  datum, visit_id, sublocatie, sample_id, soort_nl, soort_wet,  aantal) %>%
+  inner_join(bezoeken, by = "visit_id")
+
+write_csv2(data_meetneten_abv, "output/datavraag_luis/counts_meetnetten_commonbirds.csv")
+
+data_meetneten_wintertellingen <- read_vc("raw/aantallen_wintertellingen") %>%
+  filter(primaire_soort) %>%
+  arrange(meetnet, datum) %>%
+  select(soortgroep, meetnet, locatie, protocol,  datum, visit_id, sublocatie, sample_id, soort_nl, soort_wet,  aantal) %>%
+  inner_join(bezoeken, by = "visit_id")
+
+write_csv2(data_meetneten_wintertellingen, "output/datavraag_luis/counts_meetnetten_bats_winterobjects.csv")
+
+data_planten <- read_sf(dsn = "raw/planten_puntlocaties.gpkg") %>%
+  st_transform(31370) 
+
+data_planten <- data_planten %>%
+  mutate(x = st_coordinates(data_planten)[,1],
+         y = st_coordinates(data_planten)[,1],
+         soortgroep = "planten",
+         soort_nl = meetnet) %>%
+  st_drop_geometry() %>%
+  arrange(meetnet, datum) %>%
+  select(soortgroep, meetnet, locatie, protocol,  datum, visit_id,  soort_nl, soort_wet = soort_w,  schaal, code, beschrijving_floroncode, x, y, notes = opm) 
+
+write_csv2(data_planten, "output/datavraag_luis/counts_meetnetten_plants.csv")
+
+data_gentiaanblauwtje <- read_vc("raw/aantallen_gentiaanblauwtje") %>%
+  filter(primaire_soort) %>%
+  mutate(plant = as.numeric(plant),
+         stengel = as.numeric(stengel),
+         knop = as.numeric(knop)) %>%
+  arrange(meetnet, datum, locatie, plant, stengel, knop) %>%
+  select(soortgroep, meetnet, locatie, protocol,  datum, visit_id, sample_id, soort_nl, soort_wet, plant, stengel, knop, levensstadium,  aantal) %>%
+  inner_join(bezoeken, by = "visit_id")
+
+write_csv2(data_gentiaanblauwtje, "output/datavraag_luis/counts_meetnetten_alconblue.csv")
+
+locaties <- read_sf(dsn = "raw/meetnetten_locaties.gpkg", layer = "locaties") %>%
+  filter(meetnet != "Algemene Vlindermonitoring") %>%
+  select(soortgroep, meetnet, locatie, is_sample, is_active)
+
+sublocaties <- read_sf(dsn = "raw/meetnetten_locaties.gpkg", layer = "transecten") %>%
+  filter(meetnet != "Algemene Vlindermonitoring") %>%
+  select(soortgroep, meetnet, locatie, sublocatie)
+
+st_write(locaties, "output/datavraag_luis/meetnetten_locations.gpkg", "main_locations", driver = "GPKG")
+st_write(sublocaties, "output/datavraag_luis/meetnetten_locations.gpkg", "sublocations", driver = "GPKG")
 
