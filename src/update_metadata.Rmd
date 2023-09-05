@@ -5,8 +5,11 @@ output: html_document
 
 ```{r}
 library(tidyverse)
+library(INBOtheme)
 library(sf)
 library(git2rdata)
+library(conflicted)
+conflicts_prefer(dplyr::filter())
 ```
 
 ## Read file with monitoring scheme characteristics that are not available in meetnetten.be
@@ -65,7 +68,9 @@ temp <- bezoeken %>%
   distinct(soortgroep, meetnet, protocol)
 
 telperiodes_wp <- werkpakketten %>%
-  filter(jaar == 2022) %>%
+  group_by(meetnet) %>%
+  filter(jaar == max(jaar)) %>%
+  ungroup() %>%
   filter(! meetnet %in% telperiodes_taak$meetnet) %>%
   select(meetnet, start_telperiode = wp_start, einde_telperiode = wp_end) %>%
   unique() %>% 
@@ -103,5 +108,48 @@ metadata <- metadata_file %>%
 
 ```{r}
 write_vc(metadata, "meetnetkarakteristieken", "../metadata", sorting = c("soortgroep", "meetnet", "protocol", "is_sample"), strict = FALSE)
+```
+## Figure
+
+```{r}
+data_figure <- metadata_file %>%
+  mutate(actief = ifelse(meetnet == "Nauwe korfslak", 1, actief)) %>%
+  filter(actief == 1) %>%
+  distinct(soortgroep, meetnet, type_soort) %>%
+  mutate(species_group = ifelse(soortgroep == "amfibieën", "amphibians",
+                                ifelse(soortgroep == "andere zoogdieren", "other mammals", 
+                                       ifelse(soortgroep == "planten", "plants",
+                                              ifelse(soortgroep == "vleermuizen", "bats",
+                                                     ifelse(soortgroep == "mollusken", "mollusks",
+                                                            ifelse(soortgroep == "libellen", "dragonflies",
+                                                                   ifelse(soortgroep == "reptielen", "reptiles",
+                                                                          ifelse(str_detect(meetnet, "spin"), "spiders",
+                                                                                 ifelse(meetnet %in% c("Roestbruine kniptor", "Vliegend hert", "Vermiljoenkever"), "beetles",
+                                                                                        ifelse(soortgroep == "dagvlinders", "butterflies", 
+                                                                                               ifelse(meetnet %in% c("Schavertje", "Zadelsprinkhaan"),"grashoppers", "birds")))))))))))) %>%
+  filter(meetnet != "Hazelmuis - Nestbuizen") %>%
+  filter(!species_group %in% c("bats", "birds"))
+                                                                                 
+                                                                                            
+data_figure_sg <- data_figure %>%
+  group_by(species_group, type_soort) %>%
+  summarise(n_species = n()) %>%
+  ungroup() %>%
+  mutate(n_species = ifelse(species_group == "bats", 9, n_species),
+         n_species = ifelse(species_group == "birds", max(n_species + 5), n_species),
+         label = ifelse(species_group == "birds", "> 150", n_species),
+         species_type = ifelse(type_soort == "VPS", "Flemish priority species", "European priority species"))
+  
+                                
+   
+ data_figure_sg %>%
+   ggplot(aes(x = species_group, y = n_species, fill = species_type, label = label)) +
+   geom_col() +
+   geom_text( position = position_stack(vjust = 0.5)) +
+   coord_flip() +
+   labs(x = "Species group", y = "Number of species", fill = "Type",  title = "New monitoring schemes since 2016") +
+   theme(legend.position = "bottom")
+  
+                           
 ```
 
