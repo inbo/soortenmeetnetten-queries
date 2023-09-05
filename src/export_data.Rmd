@@ -185,6 +185,7 @@ query_aantallen <- "select PG.name as soortgroep
     , ACT.i18n->>'name_nl' as activiteit
     , LS.i18n->>'name_nl' as levensstadium
     , O.number_min as aantal
+    , PSC.name as type_aantal
     , st_astext(O.geom) as geom_text
  from Projects_project P
     inner join projects_projectgroup PG on PG.id = P.group_id
@@ -192,6 +193,7 @@ query_aantallen <- "select PG.name as soortgroep
     left Outer join protocols_protocol PR on PR.id = V.protocol_id
     left outer join fieldwork_sample SA on SA.visit_ID = V.ID
     left outer join fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join protocols_scale PSC on O.scale_ID = PSC.ID
     left outer join Species_species SP on SP.ID = O.species_id
     left outer join species_activity ACT on ACT.id = O.activity_id
     left outer join species_lifestage LS on LS.id = O.life_stage_id
@@ -240,19 +242,7 @@ aantallen <- aantallen_orig %>%
   mutate(jaar = as.numeric(format(datum, "%Y")),
          doy = as.numeric(format(datum, "%j"))) %>%
   mutate(levensstadium = ifelse(levensstadium == "adult" & soortgroep == "libellen", "imago", levensstadium)) %>%
-  select(soortgroep, meetnet, protocol, locatie, jaar, datum, doy, everything()) %>%
-  group_by(sample_id, species_id, geslacht, levensstadium, activiteit) %>%
-  mutate(rank_temp = rank(aantal, ties.method = "random"),
-         n_temp = n()) %>%
-  ungroup() %>%
-  mutate(type_aantal = ifelse(protocol %in% c("Vlinders - Gebiedstelling (v1)", "Vlinders - Gebiedstelling"),
-                              ifelse(n_temp == 1, "totaal gezien",
-                                     ifelse(rank_temp == 1 & n_temp ==2, "maximum samen gezien",
-                                            ifelse(rank_temp == 2, "totaal gezien", NA))),
-                              "totaal gezien") 
-                      ) %>%
-  select(-rank_temp, -n_temp)
-
+  select(soortgroep, meetnet, protocol, locatie, jaar, datum, doy, everything())
 
 query_aantallen_planten <- "select O.id
     , PG.name as soortgroep
