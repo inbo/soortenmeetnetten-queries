@@ -24,15 +24,41 @@ write.csv2(tellers_vuursalamander, "processed/vuursalamander/vrijwilligers_vuurs
 ###############################################
 
 bezoeken_abv <- read_vc(file = "bezoeken", root = "raw") %>%
-  filter(meetnet == "Algemene Broedvogelmonitoring (ABV)") %>%
-  filter(jaar == 2020)
+  filter(meetnet == "Algemene Broedvogelmonitoring (ABV)") 
 
 locaties_abv <- bezoeken_abv %>%
   group_by(meetnet, jaar, locatie) %>%
   summarise(aantal_bezoeken = n_distinct(visit_id)) %>%
   ungroup()
 
-write.csv2(locaties_abv, "processed/locaties_abv_2020.csv", row.names = FALSE)
+overzich_bezoeken <- locaties_abv %>%
+  mutate(n_bezoeken = ifelse(aantal_bezoeken < 3, aantal_bezoeken, ">= 3")) %>%
+  group_by(meetnet, jaar, n_bezoeken) %>%
+  summarise(n_locaties = n_distinct(locatie)) %>%
+  ungroup()
+
+aantallen_abv_2023 <- aantallen_abv %>%
+  filter(year(datum) >= 2023)
+
+overzicht_abv_2023 <- aantallen_abv_2023 %>%
+  mutate(jaar = year(datum)) %>%
+  group_by(jaar) %>%
+  mutate(tot_locaties = n_distinct(locatie),
+         tot_sublocaties = n_distinct(sublocatie)) %>%
+  ungroup() %>%
+  group_by(meetnet, jaar, tot_locaties, tot_sublocaties, soort_nl, soort_wet) %>%
+  summarise(aantal = sum(aantal),
+            n_locaties = n_distinct(locatie),
+            n_sublocaties = n_distinct(sublocatie)) %>%
+  ungroup() %>%
+  mutate(prop_locaties =  round(n_locaties/tot_locaties * 100, 1) ,
+         prop_sublocaties = round(n_sublocaties/tot_sublocaties * 100, 1)) %>%
+  filter(!is.na(soort_wet))
+
+write.csv2(locaties_abv, "processed/bezoeken_per_locaties_abv.csv", row.names = FALSE)
+write.csv2(overzich_bezoeken, "processed/overzicht_abv.csv", row.names = FALSE)
+
+write.csv2(overzich_bezoeken, "processed/aantallen_abv_2023.csv", row.names = FALSE)
 
 #####################################################
 
