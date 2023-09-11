@@ -1,0 +1,262 @@
+---
+title: 'Locaties soortenmeetnetten'
+author: "Toon Westra, Frederic Piesschaert en Marc Pollet"
+date: "12 maart 2019"
+
+---
+
+
+```{r markdownsetup, cache=FALSE, include=FALSE, echo=FALSE}
+#initialiseer markdown
+library(knitr)
+library(pander)
+library(n2khab)
+```
+
+
+```{r libraries, message= FALSE, warning= FALSE, echo = FALSE}
+
+library(sf)
+library(tidyverse)
+
+source("../../soortenmeetnetten-analysis/src/functions_smp.r")
+
+date <- Sys.Date()
+```
+
+# Inleiding
+
+Het advies 'Advies over monitoring in het kader van het beheerplan versus Vlaamse monitoring' (ANB-INBO-2019-3) bevat een toelichting over de soortenmeetnetten voor het opvolgen van de Europees en Vlaams prioritaire soorten op schaal Vlaanderen. Op basis van dit avies kunnen mogelijke synergieën met beheermonitoring nagegaan worden. 
+
+Aanvullend aan het advies stelt het INBO de locaties van de soortenmeetnetten ter beschikking aan het ANB onder de vorm van shapefiles. Deze locaties komen uit de ruimtelijke databank die onderdeel uitmaakt van de webapplicatie [www.meetnetten.be](https://www.meetnetten.be/). In deze webapplicatie kunnen de locaties enkel bekeken worden door geregistreerde personen die zich aanmelden voor een bepaald meetnet en aanvaard worden door de coördinator van dat meetnet. Uit praktische overwegingen maken we dus een export van de locaties uit [www.meetnetten.be](https://www.meetnetten.be/) onder de vorm van shapefiles.
+
+De locaties in [www.meetnetten.be](https://www.meetnetten.be/) liggen zo veel mogelijk vast, maar aanpassingen zijn steeds mogelijk. Daarom is het belangrijk om regelmatig (bv. jaarlijks) een update te voorzien van de geëxporteerde shapefiles. 
+
+In dit document geven we wat meer uitleg over de geëxporteerde shapefiles met meetnetlocaties.
+
+
+```{r queryMeetnettendatabank}
+
+locaties <- get_locations_smp()
+
+```
+
+```{r readStrata}
+
+provincies <- read_admin_areas(dsn = "provinces") %>%
+  select(provincie = name)
+
+```
+
+# Selectie van locaties 
+
+* De ruimtelijke databank bevat zowel locaties als sublocaties. De locaties geven de telgebieden weer. Aan deze locaties kunnen sublocaties toegevoegd worden om aan te geven waar er juist geteld wordt. Dit is bijvoorbeeld het geval bij transecttellingen, waar de sublocaties de verschillende secties van het transect vormen. De geëxporteerde shapefile bevat enkel de locaties en niet de sublocaties.
+
+* De locaties kunnen onderverdeeld worden in meetnetlocaties en optionele locaties. De meetnetlocaties behoren tot het meetnet en moeten dus verplicht geteld worden. De optionele locaties behoren niet tot het meetnet en mogen optioneel geteld worden. De geëxporteerde shapefile bevat zowel de meetnetlocaties als de optionele locaties, maar voor de optionele locaties is er dus geen garantie dat er gegevens zullen ingezameld worden. Beide type locaties kunnen onderscheiden worden via het veld 'type'.
+
+* Sommige locaties in [www.meetnetten.be](https://www.meetnetten.be/) zijn op inactief gezet omdat de doelsoort er niet meer voorkomt of omdat de locatie ontoegankelijk is. Voor deze locaties kunnen geen tellingen ingevoerd worden. De geëxporteerde shapefile bevat enkel de actieve locaties (waarvoor gegevens ingevoerd kunnen worden).
+
+* Sommige meetnetten voor Vlaams en Europees prioritaire soorten zitten niet in [www.meetnetten.be](https://www.meetnetten.be/). Voor de watervogeltellingen (WVT), bijzondere broedvogelmonitoring Vlaanderen (BBV) en het vismeetnet bestaan er afzonderlijke applicaties. De geëxporteerde shapefile bevat dus geen locaties van deze meetnetten.   
+
+* De export uit [www.meetnetten.be](https://www.meetnetten.be/) bevat ook shapefiles van inhaalslagen. Dit zijn inventarisaties waarbij locaties normaal gezien maar eenmaal onderzocht worden. Voor deze locaties is er daarom dus in principe geen synergie mogelijk met beheermonitoring. 
+    
+
+```{r selecteerLocaties}
+
+locations <- locaties %>%
+  filter(!meetnet %in% c("Algemene Vlindermonitoring", 
+                         "Algemene Broedvogelmonitoring (ABV)", 
+                         "Vleermuizen - Wintertellingen",
+                         "Bataafse stroommossel",
+                         "Hoogveenglanslibel",
+                         "Nauwe korfslak",
+                         "Platte schijfhoren",
+                         "Vliegend hert - inhaalslag (afgerond)"
+                         )) %>%
+  mutate(meetnet_type = ifelse(meetnet == "Vliegend hert", "meetnet", meetnet_type))
+
+locations_hoofdlocatie <- locations %>%
+  st_transform(crs = 31370) %>%
+  filter(locatie_type == "locatie") %>%
+  filter(is_active == 1) %>%
+  arrange(soortgroep, meetnet, locatie) %>%
+  mutate(polygoon = (substr(geom_text, 1, 7) == "POLYGON") | (substr(geom_text, 1, 12) == "MULTIPOLYGON"))
+
+locations_meetnetten <- locations_hoofdlocatie %>%
+  filter(meetnet_type == "meetnet") %>%
+  st_join(provincies, largest = TRUE) %>%
+  select(soortgroep, meetnet, locatie, type, provincie, polygoon)
+
+locations_inhaalslag <- locations_hoofdlocatie %>%
+  filter(meetnet_type == "inhaalslag") 
+
+locations_inhaalslag_prov <- locations_inhaalslag %>%
+  st_centroid() %>%
+  st_join(provincies) %>%
+  select(meetnet, locatie, provincie) %>%
+  st_drop_geometry()
+
+locations_inhaalslag <- locations_inhaalslag %>%
+  left_join(locations_inhaalslag_prov, by = c("meetnet", "locatie")) %>%
+  select(soortgroep, meetnet, locatie, type,  provincie)
+
+```
+
+```{r overzichtstabel hoofdlocaties}
+
+ overzicht_locaties <- locations %>%
+  st_drop_geometry() %>%
+  filter(locatie_type == "locatie") %>%
+  filter(is_active) %>%
+  group_by(soortgroep, meetnet, meetnet_type, is_sample) %>%
+  summarise(nLocaties = n_distinct(id)) %>%
+  ungroup() %>%
+  mutate(type = ifelse(is_sample,
+                       "meetnetlocatie",
+                       "extra_locatie")) %>%
+  select(-is_sample) %>%
+  spread(key = type, value = nLocaties, fill = 0) %>%
+  select(soortgroep, meetnet, meetnet_type, n_meetnetlocatie = meetnetlocatie, n_extra_locatie = extra_locatie)
+
+write_csv2(overzicht_locaties, str_c("../processed/locaties/meetnetten_n_locaties_", date, ".csv"))
+
+```
+
+
+
+```{r selecteerTransecten}
+
+namen_hoofdlocaties <- locations_hoofdlocatie %>%
+  st_drop_geometry() %>%
+  mutate(geclaimd = ifelse(is.na(user_id), "nee", "ja")) %>%
+  select(meetnet, locatie, locatie_id = id, is_active, is_sample, geclaimd, geclaimd_door)
+
+sublocations_transecten <- locations %>%
+  st_transform(crs = 31370) %>%
+  filter(locatie_type == "sublocatie") %>%
+  filter(is_active == 1) %>%
+  arrange(soortgroep, meetnet, locatie) %>%
+  filter((substr(geom_text, 1, 4) == "LINE") | (substr(geom_text, 1, 9) == "MULTILINE")) %>%
+  rename(sublocatie = locatie, locatie_id = parent_id) %>%
+  left_join(namen_hoofdlocaties, by = c("meetnet", "locatie_id")) %>%
+  select(soortgroep, meetnet, locatie, sublocatie) %>%
+  arrange(soortgroep, meetnet, locatie, sublocatie) %>%
+  filter(!is.na(locatie))
+
+locaties_transect <- sublocations_transecten %>%
+  st_drop_geometry() %>%
+  distinct(meetnet, locatie) %>%
+  mutate(transect = "Ja")
+
+hoofdlocaties_transect <- namen_hoofdlocaties %>%
+  filter(meetnet %in% locaties_transect$meetnet) %>%
+  left_join(locaties_transect, by = c("meetnet", "locatie")) %>%
+  mutate(transect = ifelse(is.na(transect), "nee", transect))
+
+write_csv2(hoofdlocaties_transect, str_c("../processed/locaties/overzicht_transecten_", date, ".csv"))
+
+```
+
+# Geëxporteerde shapefiles
+
+De geëxporteerde shapefiles kunnen in [deze Google Drive folder](https://drive.google.com/open?id=14qc-xoUpqmGBHuRpWT4XjVytq0ildRZT) gevonden worden.
+
+In de (gezipte) folder ExportLocaties_versiejjjj-mm-dd  vind je volgende shapefiles:
+
+* Meetnetten_versiejjjj-mm-dd: de locaties van alle meetnetten in één shapefile (locaties van verschillende meetnetten kunnen overlappen; punt- en lijnfeatures worden omgezet naar polygonen door een buffer van 2 meter te nemen rond de features)
+* Inhaalslag_versiejjjj-mm-dd: de locaties van alle inhaalslagen in één shapefile
+* afzonderlijke shapefiles per meetnet in de folder 'Meetnetten'
+* afzonderlijke shapefiles per inhaalslag in de folder 'Inhaalslag'
+
+
+```{r exportData, eval = TRUE}
+
+locations_polygonen <- locations_meetnetten %>%
+  filter(polygoon)
+
+locations_ntPolygonen <- locations_meetnetten %>%
+  filter(!polygoon) %>%
+  st_buffer(dist = 2)
+
+locations_meetnetten_allPolygonen <- locations_polygonen %>%
+  bind_rows(locations_ntPolygonen) %>%
+  select(-polygoon)
+
+locations_meetnetten <- locations_meetnetten %>%
+  select(-polygoon)
+
+#export meetnetten
+st_write(locations_meetnetten_allPolygonen, 
+         str_c("../processed/locaties/export_locaties_versie", date), 
+         str_c("meetnetten_versie", date), driver = "ESRI Shapefile", append = TRUE)
+
+meetnetten <- locations_meetnetten %>%
+    st_drop_geometry() %>%
+    distinct(meetnet)
+
+for (m in meetnetten$meetnet) {
+
+  meetnet_locations <- locations_meetnetten %>%
+    filter(meetnet == m)
+
+  st_write(meetnet_locations, str_c("../processed/locaties/export_locaties_versie", date, "/meetnetten"), 
+           str_c("meetnet_", m, "_versie", date), 
+           driver = "ESRI Shapefile", 
+           append = TRUE)
+
+}
+
+#export inhaalslag
+st_write(locations_inhaalslag,
+         str_c("../processed/locaties/export_locaties_versie", date), 
+         str_c("inhaalslag_versie", date), driver = "ESRI Shapefile", append = TRUE)
+
+inhaalslag <- locations_inhaalslag %>%
+    st_drop_geometry() %>%
+    distinct(meetnet)
+
+for (i in inhaalslag$meetnet) {
+
+  meetnet_locations <- locations_inhaalslag %>%
+    filter(meetnet == i)
+
+    st_write(meetnet_locations, str_c("../processed/locaties/export_locaties_versie", date, "/inhaalslag"), 
+           str_c("inhaalslag_", m, "_versie", date), 
+           driver = "ESRI Shapefile", 
+           append = TRUE)
+
+}
+
+```
+
+```{r exportTransecten, eval = TRUE}
+
+
+#export transecten
+
+st_write(sublocations_transecten, 
+         str_c("../processed/locaties/export_transecten_versie", date), 
+         str_c("transecten_versie", date), 
+         driver = "ESRI Shapefile", 
+         append = TRUE)
+
+meetnetten_transect <- sublocations_transecten %>%
+    st_drop_geometry() %>%
+    distinct(meetnet)
+
+for (m in meetnetten_transect$meetnet) {
+
+  meetnet_transecten <- sublocations_transecten %>%
+    filter(meetnet == m)
+
+  st_write(meetnet_transecten, 
+          str_c("../processed/locaties/export_transecten_versie", date), 
+          str_c("meetnet_", m, "_transecten_versie", date), 
+          driver = "ESRI Shapefile", append = TRUE)
+
+}
+
+
+```
+
+
