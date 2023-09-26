@@ -36,9 +36,6 @@ source("connect_db.R")
 
 con <- connect_inbo_dbase("S0008_00_Meetnetten")
 
-test <- dbReadTable(con, "staging_Meetnetten.fieldwork_visit")
-
-
 ```
 
 ## Queries
@@ -886,62 +883,41 @@ tellers <- tellers_orig %>%
 ### Covariabelen
 
 ```{r}
-query_covariabelen <- "Select P.Name as Meetnet
+query_covariabelen_visit <- "Select P.Name as Meetnet
     , PR.i18n->>'name_nl' as Protocol
     , V.ID as Visit_ID
-    , V.task_ID
-    --, A.ID as attribute_id
-    --, A.name as Bezoekvariabele
     , A.i18n->>'name_nl' as Bezoekvariabele
-    --, VV.value as Waarde
-    --, C.value
     , case when C.value is null then VV.value else C.name end as Waarde
-    --, C.name
     , U.i18n->>'name_nl' as Eenheid
 from Projects_project P
     INNER JOIN Fieldwork_visit V on V.project_ID = P.ID
     INNER JOIN Protocols_protocol PR on PR.ID = V.protocol_ID
-    Left OUTER JOIN fieldwork_visitvalue VV on VV.object_ID = V.ID
+    inner JOIN fieldwork_visitvalue VV on VV.object_ID = V.ID
     left outer JOIN model_attributes_attribute A on A.ID = VV.attribute_ID
     left outer Join model_attributes_unit U on U.id = A.unit_id
     LEFT Outer Join Model_attributes_choice C on C.Attribute_id = VV.attribute_id and cast(C.id as varchar(100)) = VV.value
-    --where VV.attribute_ID = 9
-Order by P.Name, PR.name, VV.object_ID
+Order by P.Name, PR.name, VV.object_ID"
 
-/**
-select * from fieldwork_visitvalue VV
-inner join Model_attributes_attribute A on A.ID = VV.attribute_id
-left outer join Model_attributes_choice C on C.attribute_id = A.ID
-left outer join Model_attributes_unit U on U.ID = A.unit_ID
-order by VV.object_id
-**/
-
-/**
-select V.ID as Visit_ID
-    , VV.ID as VisitValue_ID
-    , A.ID AS Attribute_ID
-    , A.name_nl as Attribuut_beschrijving
-    , VV.value as VisitValue_Value
+query_covariabelen_sample <- "Select P.Name as Meetnet
+    , PR.i18n->>'name_nl' as Protocol
+    , V.ID as Visit_ID
+    , SA.id as sample_id
+    , A.i18n->>'name_nl' as Bezoekvariabele
+    , SV.value as waarde
+    , U.i18n->>'name_nl' as Eenheid
 from Projects_project P
     INNER JOIN Fieldwork_visit V on V.project_ID = P.ID
-    INNer JOIN fieldwork_visitvalue VV on VV.object_ID = V.ID
-    inner join Model_attributes_attribute A on A.ID = VV.attribute_id
-where P.id = 4 --boomkikker
-    and V.id = 238
+    INNER JOIN Protocols_protocol PR on PR.ID = V.protocol_ID
+    left outer join fieldwork_sample SA on SA.visit_ID = V.ID
+    inner JOIN fieldwork_samplevalue SV on SV.object_ID = SA.ID
+    left outer JOIN model_attributes_attribute A on A.ID = SV.attribute_ID
+    left outer Join model_attributes_unit U on U.id = A.unit_id
+    LEFT Outer Join Model_attributes_choice C on C.Attribute_id = SV.attribute_id and cast(C.id as varchar(100)) = SV.value
+where 1=1
+Order by P.Name, PR.name, SV.object_id"
 
-select *
-from model_attributes_choice c
-where C.attribute_ID in (7, 9)
-
-
-select *
-from accounts_user
-where length(reference_obs) > 1
-
-**/"
-
-covariabelen <- set_utf8(dbGetQuery(con, query_covariabelen))
-
+covariabelen_visit <- set_utf8(dbGetQuery(con, query_covariabelen_visit))
+covariabelen_sample <- set_utf8(dbGetQuery(con, query_covariabelen_sample))
 ```
 
 ### Opmerkingen
@@ -982,7 +958,8 @@ write_vc(werkpakketten, "werkpakketten", root = "../raw", sorting = c("meetnet",
 write_vc(werkpakketten_locaties, "werkpakketten_locaties", root = "../raw", sorting = c("meetnet", "werkpakket", "locatie"), strict = FALSE)
 write_vc(taken, "taken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "werkpakket"), strict = FALSE)
 write_vc(tellers, "tellers", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id"), strict = FALSE)
-write_vc(covariabelen, "covariabele", root = "../raw", sorting = c("meetnet","visit_id"))
+write_vc(covariabelen_visit, "covariabele", root = "../raw", sorting = c("meetnet","visit_id"))
+write_vc(covariabelen_sample, "covariabele_sample", root = "../raw", sorting = c("meetnet","visit_id", "sample_id"))
 write_vc(locatie_opm, "locatie_opm", root = "../raw", sorting = c("meetnet", "locatie"))
 write_vc(meetnetten_users, "meetnetten_users", root = "../raw", sorting = c("meetnet", "last_name"), strict = FALSE)
 write_vc(locatie_users, "locatie_users", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
