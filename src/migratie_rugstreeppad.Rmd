@@ -1,0 +1,231 @@
+---
+title: "Migratie data rugstreeppad"
+output:
+  bookdown::html_document2:
+    keep_md: TRUE
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
+      smooth_scroll: FALSE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+
+library(tidyverse)
+library(sf)
+library(conflicted)
+library(n2khab)
+library(kableExtra)
+library(leaflet)
+
+conflicts_prefer(dplyr::filter())
+
+path <- fileman_up("soortenmeetnetten-analysis")
+
+source(file.path(path, "src/functions_smp.R"))
+```
+
+# Data
+
++ Opgeleverde data 2022: puntlocaties en transecten
+
+```{r}
+
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2022/Data niet in Meetnetten.be/Rugstreeppad - Oplevering data Meetnetten 2022"
+
+data_aantallen_2022 <- st_read(data_path, "Data_Tim_HvA_Rugstreeppad_2022", quiet = TRUE)
+
+data_transecten_2022 <- st_read(data_path, "Tracks_Tim_HvA_Rugstreeppad_2022", quiet = TRUE)
+
+data_transecten_2022 <- data_transecten_2022 %>%
+  st_transform(crs = 4326)
+```
+
++ Locaties die in meetnetten.be zitten
+
+```{r}
+locaties_rugstreeppad <- get_locations_smp() %>%
+  filter(meetnet == "Rugstreeppad") %>%
+  select(locatie)
+```
+
++ Gemigreerde data uit 2021 die al in meetnetten.be zitten
+
+```{r}
+aantallen_meetnetten <- get_counts_smp() %>%
+  filter(meetnet == "Rugstreeppad") 
+
+visits_meetnetten <- get_visits_smp() %>%
+  filter(meetnet == "Rugstreeppad") %>%
+  select(visit_id, hoofdteller, bezoek_status, notes)
+  
+aantallen_meetnetten <- aantallen_meetnetten %>%
+  left_join(visits_meetnetten, by = "visit_id")
+```
+
+# Data verkenning
+
+Onderstaande tabel geeft een overzicht van de puntwaarnemingen uit 2022.
+
+```{r}
+data_aantallen_2022 %>%
+  st_drop_geometry() %>%
+  group_by(naam_nl, gedrag, kleed, methode, geslacht) %>%
+  summarise(n_records = n(),
+            aantal_tot = sum(aantal)) %>%
+  ungroup() %>%
+  kable(caption = "Aantal records en totaal aantal per combinatie van gedrag, kleed, methode en geslacht") %>%
+  kable_styling()
+```
+
+**Enkel eitellingen migreren naar meetnetten.be of alle data (exlusief dode dieren)? Enkel eitellingen want bezoeken gebeuren overdag?**
+
+```{r}
+data_rugstreeppad_2022 <- data_aantallen_2022 %>%
+  st_transform(crs = 4326) %>%
+  st_join(rename(locaties_rugstreeppad, locatie_nearest = locatie), join = st_nearest_feature) %>%
+  st_join(locaties_rugstreeppad) %>%
+  mutate(in_meetnetlcoatie = !is.na(locatie))
+  
+```
+
+```{r}
+locaties_haven <- locaties_rugstreeppad %>%
+  filter(locatie %in% data_rugstreeppad_2022$locatie_nearest)
+
+aantallen_meetnetten_haven <- aantallen_meetnetten %>%
+  filter(locatie %in% locaties_haven$locatie)
+
+aantallen_migratie_2021 <- aantallen_meetnetten_haven %>%
+  filter(bezoek_status == "Telmethode niet gevolgd") %>%
+  filter(!is.na(aantal)) %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370) %>%
+  st_transform(4326)
+  
+```
+
+Onderstaande kaart toont:
+
++ de puntwaarnemingen: waarnemingen van eisnoeren 2022 (rode cirkels), overige waarnemingen 2022 (zwarte cirkels), waarnemingen van eisnoeren 2021 die al gemigreerd werden naar meetnetten.be (blauwe cirkels)
++ meetnetlocaties (blauwe polygonen)
++ tracks (gele lijnen)
+
+```{r}
+
+data_rugstreeppad_2022 %>%
+  mutate(show_colour = ifelse(kleed == "ei", "red", "black")) %>%
+  leaflet() %>%
+  addTiles() %>%
+  addPolygons(data = locaties_haven, label = ~locatie, group = "locaties meetnetten") %>%
+  addCircleMarkers(opacity = 0.5, color = ~show_colour, label = ~str_c(aantal, " ", kleed, " ", gedrag), group = "puntwaarnemingen 2022") %>%
+  addCircleMarkers(data = aantallen_migratie_2021, opacity = 0.5, label = ~aantal, group = "puntwaarnemingen 2021") %>%
+  addPolylines(data = data_transecten_2022, color = "yellow", weight = 2, dashArray = 3, group = "tracks") %>%
+  addLayersControl(
+    overlayGroups = c("puntwaarnemingen 2022", "puntwaarnemingen 2021", "locaties meetnetten", "tracks"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+
+```
+
+
+# Voorstel nieuwe locaties voor Rugstreeppad
+
+Er zijn heel wat waarnemingen die buiten de bestaande meetnetlocaties vallen.
+Hieronder een voorstel voor een aantal nieuwe locaties (blauwe polygonen).
+De bestaande locaties in meetnetten.be worden weergegeven met groene polygonen.
+
+```{r}
+locaties_nieuw <- st_read("../gis/rugstreeppad_extra_locaties", "rugstreeppad_extra_locaties", quiet = TRUE)
+
+puntlocaties_locaties_nieuw <- data_rugstreeppad_2022 %>%
+  st_join(locaties_nieuw) %>%
+  filter(!is.na(naam)) %>%
+  mutate(show_colour = ifelse(kleed == "ei", "red", "black"))
+
+locaties_nieuw %>%
+  leaflet() %>%
+  addTiles() %>%
+  addPolygons(label = ~naam, labelOptions = labelOptions(noHide = TRUE), group = "nieuwe locaties") %>%
+  addPolygons(data = locaties_haven, color = "green",  label = ~locatie, group = "bestaande locaties in meetnetten.be") %>%
+  addCircleMarkers(data = puntlocaties_locaties_nieuw, opacity = 0.5, color = ~show_colour, label = ~str_c(aantal, " ", kleed, " ", gedrag), group = "puntwaarnemingen 2022") %>%
+  addLayersControl(
+    overlayGroups = c("puntwaarnemingen 2022", "nieuwe locaties"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```
+
+# Data processing voor migratie naar meetnetten.be databank
+
+Het bestand 'data_migratie_rugstreeppad_2022.csv' bevat de te migreren data.
+
+```{r}
+locaties_rugstreeppad_update <- locaties_haven %>%
+  bind_rows(rename(locaties_nieuw, locatie = naam, geom = geometry))
+
+data_2022_migratie <- data_rugstreeppad_2022 %>%
+  select(-locatie, -locatie_nearest) %>%
+  st_join(locaties_rugstreeppad_update, join = st_nearest_feature) %>%
+  filter(kleed == "ei") %>%
+  mutate(meetnet = "Rugstreeppad",
+         protocol = "Rugstreeppad - Transect",
+         bezoek_status = "Telmethode niet gevolgd",
+         hoofdteller = "Tim Vochten") %>%
+  select(meetnet, protocol, locatie, datum, hoofdteller , bezoek_status, levensstadium = kleed, aantal)
+
+data_2022_migratie <- data_2022_migratie %>%
+  st_drop_geometry() %>%
+  mutate(x = st_coordinates(data_2022_migratie)[,1],
+         y = st_coordinates(data_2022_migratie)[,2])
+
+write_csv2(data_2022_migratie, "../processed/migratie_rugstreeppad/data_migratie_rugstreeppad_2022.csv")
+```
+
+# Aanpassen gemigreerde bezoeken in meetnetten.be uit 2021
+
+De aangemaakte bezoeken op basis van de gemigreerde data uit 2021, moeten aangepast worden als we de nieuwe locaties toevoegen. 
+
+Onderstaande tabel geeft een overzicht van de aanpassingen. 
+
+Het bestand 'data_migratie_rugstreeppad_2021_update.csv' geeft de details van de wijzigingen.
+
+```{r}
+aantallen_migratie_2021_update <- aantallen_migratie_2021 %>%
+  rename(locatie_oud = locatie) %>%
+  st_join(locaties_rugstreeppad_update, join = st_nearest_feature) %>%
+  group_by(visit_id) %>%
+  mutate(wijziging = ifelse(all(locatie_oud != locatie), "wijzig locatienaam",
+                            ifelse(any(locatie_oud != locatie), "bezoek opsplitsen", "geen wijziging"))) %>%
+  ungroup()
+
+visits_wijziging <- aantallen_migratie_2021_update %>%
+  st_drop_geometry() %>%
+  filter(wijziging != "geen wijziging") %>%
+  group_by(meetnet, visit_id, datum, locatie_oud, wijziging) %>%
+  arrange(locatie) %>%
+  summarise(locatie_nieuw = str_c(unique(locatie), collapse = " + ")) %>%
+  ungroup() %>%
+  mutate(visit_id = str_c('<a href = "https://www.meetnetten.be/fieldwork/visits/', visit_id,'">', visit_id, '</a>'))
+
+aantallen_migratie_2021_update <- aantallen_migratie_2021_update %>%
+  filter(wijziging != "geen wijziging") %>%
+  mutate(wijziging_sample = ifelse(wijziging == "bezoek opsplitsen",
+                        ifelse(locatie_oud != locatie, "verwijder sample van bestaand bezoek en voeg toe aan nieuw bezoek", "behoud sample"),
+                        NA)) %>%
+  select(meetnet, protocol, locatie_oud, locatie, datum, visit_id, sample_id, hoofdteller, bezoek_status, levensstadium, aantal, wijziging, wijziging_sample)
+
+aantallen_migratie_2021_update <- aantallen_migratie_2021_update %>%
+  st_drop_geometry() %>%
+  mutate(x = st_coordinates(aantallen_migratie_2021_update)[, 1],
+         y = st_coordinates(aantallen_migratie_2021_update)[, 2])
+
+write_csv2(aantallen_migratie_2021_update, "../processed/migratie_rugstreeppad/data_migratie_rugstreeppad_2021_update.csv")
+
+visits_wijziging %>%
+  kable(caption = "Te wijzigen bezoeken migratie 2021",
+        escape = FALSE) %>%
+  kable_styling()
+```
+
