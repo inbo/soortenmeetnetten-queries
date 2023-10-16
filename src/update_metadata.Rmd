@@ -47,7 +47,7 @@ meetnetten_n_locaties <- locaties %>%
 
 # telperiodes
 telperiodes_taak <- taken %>%
-  filter(jaar == 2022) %>%
+  filter(jaar == 2023) %>%
   select(soortgroep, meetnet, protocol, jaar, taak_start, taak_end) %>%
   unique() %>%
   group_by(meetnet, protocol) %>%
@@ -65,20 +65,24 @@ telperiodes_taak <- telperiodes_taak %>%
 
 temp <- bezoeken %>%
   filter(jaar >= 2018) %>%
-  distinct(soortgroep, meetnet, protocol)
+  distinct(soortgroep, meetnet, protocol) %>%
+  bind_rows(tibble(soortgroep = "reptielen",
+                   meetnet = "Gladde slang",
+                   protocol = "Gladde slang - Telling onder platen"))
 
 telperiodes_wp <- werkpakketten %>%
   group_by(meetnet) %>%
   filter(jaar == max(jaar)) %>%
   ungroup() %>%
-  filter(! meetnet %in% telperiodes_taak$meetnet) %>%
+  filter(!meetnet %in% telperiodes_taak$meetnet) %>%
   select(meetnet, start_telperiode = wp_start, einde_telperiode = wp_end) %>%
   unique() %>% 
-  inner_join(temp, by = "meetnet")
+  inner_join(temp, by = "meetnet") %>%
+  filter(meetnet != "Vroedmeesterpad")
 
 telperiodes_metadata <- metadata_file %>%
-  filter(! meetnet %in% telperiodes_taak$meetnet) %>%
-  filter(! meetnet %in% telperiodes_wp$meetnet) %>%
+  filter(!meetnet %in% telperiodes_taak$meetnet) %>%
+  filter(!meetnet %in% telperiodes_wp$meetnet) %>%
   mutate(start_telperiode = as.Date(start_telperiode, format = "%d/%m/%Y"),
          einde_telperiode = as.Date(einde_telperiode, format = "%d/%m/%Y")) %>%
   select(meetnet, protocol, start_telperiode, einde_telperiode) %>%
@@ -98,10 +102,12 @@ telperiodes <- telperiodes_taak %>%
 
 ```{r}
 metadata <- metadata_file %>%
-  select(-start_telperiode, - einde_telperiode) %>%
+  select(-start_telperiode, -einde_telperiode) %>%
   left_join(telperiodes, by = c("soortgroep", "meetnet", "protocol", "generatie")) %>%
   left_join(meetnetten_n_locaties, by = c("meetnet")) %>%
-  select(actief, everything())
+  select(actief, everything()) %>%
+  mutate(is_sample = ifelse(meetnet == "Gladde slang", TRUE, is_sample),
+         n_locaties = ifelse(meetnet == "Gladde slang", 49, n_locaties))
 ```
 
 ## Write 
