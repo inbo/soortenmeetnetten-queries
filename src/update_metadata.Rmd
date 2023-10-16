@@ -65,10 +65,9 @@ telperiodes_taak <- telperiodes_taak %>%
 
 temp <- bezoeken %>%
   filter(jaar >= 2018) %>%
-  distinct(soortgroep, meetnet, protocol) %>%
+  distinct(soortgroep, meetnet) %>%
   bind_rows(tibble(soortgroep = "reptielen",
-                   meetnet = "Gladde slang",
-                   protocol = "Gladde slang - Telling onder platen"))
+                   meetnet = "Gladde slang"))
 
 telperiodes_wp <- werkpakketten %>%
   group_by(meetnet) %>%
@@ -81,13 +80,13 @@ telperiodes_wp <- werkpakketten %>%
   filter(meetnet != "Vroedmeesterpad")
 
 telperiodes_metadata <- metadata_file %>%
-  filter(!meetnet %in% telperiodes_taak$meetnet) %>%
-  filter(!meetnet %in% telperiodes_wp$meetnet) %>%
+  anti_join(telperiodes_taak, by = c("meetnet", "protocol")) %>%
+  anti_join(telperiodes_wp, by = c("meetnet")) %>%
   mutate(start_telperiode = as.Date(start_telperiode, format = "%d/%m/%Y"),
          einde_telperiode = as.Date(einde_telperiode, format = "%d/%m/%Y")) %>%
   select(meetnet, protocol, start_telperiode, einde_telperiode) %>%
   unique() %>% 
-  inner_join(temp, by = c("meetnet", "protocol"))
+  inner_join(temp, by = c("meetnet"))
   
 telperiodes <- telperiodes_taak %>%
   bind_rows(telperiodes_wp) %>%
