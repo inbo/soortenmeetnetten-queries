@@ -1,7 +1,12 @@
 .Rproj.user
 .Rhistory
-.RData
+.RData*
 .Ruserdata
 raw
 gis
 data_extern
+html*
+src/datarapport/gebiedsrapport_cache/
+*.png
+*.pdf
+output
