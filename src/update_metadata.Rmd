@@ -61,7 +61,8 @@ telperiodes_taak <- telperiodes_taak %>%
   group_by(soortgroep, meetnet, protocol, generatie) %>%
   summarise(start_telperiode = min(taak_start),
             einde_telperiode = max(taak_end)) %>%
-  ungroup()
+  ungroup() %>%
+  mutate(protocol = ifelse(protocol == "Vlinders - Gebiedstelling (mobiel)", "Vlinders - Gebiedstelling", protocol))
 
 temp <- bezoeken %>%
   filter(jaar >= 2018) %>%
@@ -94,7 +95,8 @@ telperiodes <- telperiodes_taak %>%
    bind_rows(telperiodes_metadata) %>%
   arrange(meetnet, protocol) %>%
   mutate(protocol = ifelse(meetnet == "Grote weerschijnvlinder", "Vlinders - Gebiedstelling", protocol),
-         generatie = ifelse(is.na(generatie), "generatie1", generatie))
+         generatie = ifelse(is.na(generatie), "generatie1", generatie)) %>%
+  unique()
 
 ```
 
