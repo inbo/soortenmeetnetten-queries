@@ -1,0 +1,110 @@
+---
+title: "Meetnet Vliegend hert"
+output: html_document
+date: "2024-01-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+library(tidyverse)
+library(sf)
+library(DT)
+library(kableExtra)
+library(leaflet)
+
+```
+
+```{r}
+data_stagbeetle <- read_csv("../raw/2024-01-08-stag-beetle.csv")
+
+colnames(data_stagbeetle) <- str_replace_all(colnames(data_stagbeetle), " ", "_")
+
+data_stagbeetle <- data_stagbeetle %>%
+  filter(visit_location_country == "België") %>%
+  mutate(year = year(visit_start_date))
+
+visits_summary <- data_stagbeetle %>%
+  group_by(year, visit_location, visit_start_date, visit_notes, visit_id) %>%
+  summarise(count_data = all(!is.na(number)),
+            n_counts = n_distinct(id),
+            number_tot = sum(number)) %>%
+  ungroup()
+
+visits_location <- visits_summary %>%
+  group_by(year, visit_location) %>%
+  summarise(n_visits = n_distinct(visit_id),
+            n_visits_data = sum(!is.na(number_tot))
+            ) %>%
+  ungroup()
+  
+locations_year <- visits_location %>%
+  group_by(year) %>%
+  summarise(n_visits_tot = sum(n_visits) ,
+            n_locaties = n_distinct(visit_location),
+            n_locaties_5bezoeken = sum(n_visits >= 5),
+            n_locaties_5bezoeken_data = sum(n_visits_data >= 5)) %>%
+  ungroup()
+
+write_csv2(data_stagbeetle, "../output/stag_beetle_2024-01-08.csv")
+
+```
+
+
+
+
+# Overzicht bezoeken 2023
+
+Onderstaande tabel geeft een overzicht van de bezoeken in 2023.
+Voor een aantal bezoeken zijn de aantallen niet correct ingevoerd (soms worden de aantallen wel in het opmerkingenveld ingevoerd).
+
+```{r}
+visits_summary %>%
+  filter(year == 2023) %>%
+  select(locatie = visit_location, datum = visit_start_date, opm = visit_notes, aantallen_ingevoerd = count_data, aantal_tot = number_tot) %>%
+  datatable(rownames = FALSE, filter = "top")
+```
+
+# Overzicht locaties
+
+Onderstaande tabel toont het aantal bezoeken per locatie (n_bezoeken) en het aantal bezoeken met correct ingevoerd aantallen per locatie (n_bezoeken_data).
+
+```{r}
+visits_location %>%
+   filter(year >= 2021) %>%
+  select(year, locatie = visit_location, n_bezoeken = n_visits, n_bezoeken_data = n_visits_data) %>%
+  arrange(locatie, year) %>%
+  datatable(rownames = FALSE, filter = "top") 
+  
+```
+
+# Evaluatie jaardoelen
+
+Onderstaand overzicht toont
+
++ het aantal bezochte locaties (n_locaties)
++ het aantal voldoende getelde locaties (n_locaties_5bezoeken)
++ het aantal voldoende getelde locaties waarvoor data correct is ingevoerd (n_locaties_5bezoeken_data)
+
+```{r}
+jaardoel1 <- (locations_year %>%
+  filter(year == 2023))$n_locaties / 19 * 100 
+
+jaardoel2 <- (locations_year %>%
+  filter(year == 2023))$n_locaties_5bezoeken / 10 * 100 
+
+jaardoel1 <- round(jaardoel1)
+jaardoel2 <- round(jaardoel2)
+
+locations_year %>%
+  kable() %>%
+  kable_styling()
+```
+
+De jaardoelen voor 2023 zijn:
+
++ alle locaties minstens eenmaal tellen: `r jaardoel1` % gehaald
++ 10 locaties minstens vijfmaal tellen: `r jaardoel2` % gehaald
+
+
+
