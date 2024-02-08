@@ -1,0 +1,726 @@
+---
+title: "Datarapport Kamp van Beverlo"
+author: Toon Westra
+output:
+  bookdown::html_document2:
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
+      smooth_scroll: FALSE
+    fig.cap: FALSE
+  bookdown::pdf_book:
+    toc: FALSE
+    fig.cap: FALSE
+date: 28-11-2023
+---
+
+```{r, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(cache = FALSE)
+
+library(tidyverse)
+library(INBOtheme)
+library(sf)
+library(leaflet)
+library(crosstalk)
+library(git2rdata)
+library(mapview)
+
+conflicted::conflicts_prefer(dplyr::filter)
+
+html_output <- knitr::opts_knit$get("rmarkdown.pandoc.to") == "html"
+```
+
+```{r}
+militair_domein_beverlo  <- read_sf("../../gis/militaire_domeinen/Gewestplan_MilitairDomein.shp", crs = 31370, quiet = TRUE) %>%
+  filter(OIDN %in% c(7653, 38325)) %>%
+  st_transform(4326) %>%
+  select(hoofdcode = HOOFDCODE) %>%
+  group_by(hoofdcode) %>%
+  summarise(n_pol = n()) %>%
+  ungroup()
+  
+```
+
+# Inleiding
+
+Dit rapport geeft een overzicht van de data ingezameld via de [soortenmeetnetten](www.meetnetten.be) binnen het gebied 'Kamp van Beverlo'.
+Via de soortenmeetnetten monitoren het Instituut voor Natuur- en Bosonderzoek (INBO) en het Agentschap Natuur en Bos (ANB) prioritaire soorten in Vlaanderen.
+Vrijwilligers voeren de meeste tellingen uit onder coördinatie van Natuurpunt Studie.
+
+Binnen het gebied 'Kamp van Beverlo' liggen er meetnetlocaties van volgende meetnetten:
+
++ Gentiaanblauwtje
++ Kommavlinder
++ Heivlinder
++ Rugstreeppad
++ Witte waterranonkel
+
+Voor elke meetnet tonen we:
+
+```{r, eval = !html_output, results = 'asis'}
+
+cat("\n\n+ De situering van de meetnetlocaties binnen het gebied 'Kamp Van Beverlo'.\n")
+cat("+ Een kaart met de meetnetlocaties (polygonen) en de locaties waar de meetnetsoort werd waargenomen (blauwe punten).\n")
+
+```
+
+```{r, eval = html_output, results = 'asis'}
+
+cat("\n\n+ Een interactieve kaart met de meetnetlocaties en de getelde aantallen (blauwe punten). Je kan selecteren op jaartal en aanduiden of je al dan niet nulwaarnemingen wilt weergeven. Als je met de muis over een punt gaat zie je de datum van de telling en het getelde aantal.")
+
+```
+
++ Een grafiek met de gemiddelde aantallen per jaar.
++ Een grafiek met de gemiddelde aantallen per jaar en per meetnetlocatie, indien er meerdere meetnetlocaties liggen binnen het gebied 'Kamp Van Beverlo'. 
+
+
+```{r}
+
+buiten_md <- c("Kiefhoek/Veewei")
+
+locaties_beverlo <- read_sf("../../raw/meetnetten_locaties.gpkg", "locaties", quiet = TRUE) %>%
+  filter(locatie_type == "locatie",
+         meetnet_type == "meetnet",
+         meetnet != "Algemene Vlindermonitoring") %>%
+  filter(is_active) %>%
+  filter(!locatie %in% buiten_md) %>%
+  mutate(check = sf::st_is_valid(geom),
+         geom_type = ifelse(str_detect(geom_text, "POINT"), "point", "polygon")) %>%
+  filter(check) %>%
+  st_join(militair_domein_beverlo) %>%
+  filter(!is.na(hoofdcode)) %>%
+  arrange(soortgroep) %>%
+  mutate(Meetnetlocatie = locatie)
+
+sublocaties_beverlo <- read_sf("../../raw/meetnetten_locaties.gpkg", "transecten", quiet = TRUE) %>%
+  filter(locatie %in% locaties_beverlo$locatie) %>%
+  mutate(Meetnetlocatie = locatie)
+
+sublocaties_beverlo_centroid <- sublocaties_beverlo %>%
+  st_centroid() %>%
+  select(meetnet, locatie, sublocatie) %>%
+  mutate(locatie = str_to_lower(locatie),
+         sublocatie = str_to_lower(sublocatie))
+
+locaties_beverlo_centroid <- locaties_beverlo %>%
+  st_centroid() %>%
+  select(meetnet, locatie) %>%
+  mutate(locatie = str_to_lower(locatie),
+         sublocatie = locatie) %>%
+  bind_rows(sublocaties_beverlo_centroid)
+
+bezoeken_beverlo <- read_vc(root = "../../raw", "bezoeken_20231213") %>%
+  mutate(locatie = str_to_lower(locatie)) %>%
+  filter(str_detect(locatie, "beverlo") | 
+           (locatie %in% str_to_lower(locaties_beverlo$locatie))) %>%
+  select(visit_id, bezoek_status, voor_analyse)
+
+aantallen_beverlo_planten <- read_sf(dsn = "../../raw/planten_puntlocaties.gpkg", layer = "planten_puntlocaties", quiet = TRUE) %>%
+  mutate(locatie = str_to_lower(locatie),
+         sample_id = as.character(sample_id)) %>%
+  filter(str_detect(locatie, "beverlo") |
+           (locatie %in% str_to_lower(locaties_beverlo$locatie))) %>%
+  mutate(soort_nl = meetnet) %>%
+  select(meetnet, protocol, locatie, datum, visit_id, sample_id, soort_nl, code, beschrijving_floroncode) %>%
+  filter(!is.na(soort_nl)) %>%
+  mutate(type_telling = "punt",
+         sublocatie = locatie, 
+         soortgroep = "planten") %>%
+  mutate(aantal_min = ifelse(code == "A", 0, 
+                             ifelse(code == "B", 1, 
+                                    ifelse(code == "C", 5, 
+                                           ifelse(code == "D", 25, 
+                                                  ifelse(code == "E", 50, 
+                                                         ifelse(code == "F", 500,
+                                                                ifelse(code == "G", 5000, 0))))))),
+         aantal_max = ifelse(code == "A", 1, 
+                             ifelse(code == "B", 5, 
+                                    ifelse(code == "C", 25, 
+                                           ifelse(code == "D", 50, 
+                                                  ifelse(code == "E", 500, 
+                                                         ifelse(code == "F", 5000,
+                                                                ifelse(code == "G", 10000, 0))))))),
+         aantal = (aantal_max + aantal_min)/2 ) %>%
+  mutate(levensstadium = "onbekend")
+
+# aantallen_beverlo_abv <- read_vc(root = "../../raw", "aantallen_abv") %>%
+#   mutate(locatie = str_to_lower(locatie)) %>%
+#   filter(locatie %in% str_to_lower(locaties_beverlo$locatie)) %>%
+#   filter(!is.na(soort_nl))
+
+aantallen_beverlo_vleermuizen <- read_vc(root = "../../raw", "aantallen_wintertellingen") %>%
+  mutate(locatie = str_to_lower(locatie)) %>%
+  filter(locatie %in% str_to_lower(locaties_beverlo$locatie)) %>%
+  filter(!is.na(soort_nl))
+
+aantallen_beverlo <- read_vc(root = "../../raw", "aantallen_20231213") %>%
+  mutate(locatie = str_to_lower(locatie)) %>%
+  filter(str_detect(locatie, "beverlo") | 
+           (locatie %in% str_to_lower(locaties_beverlo$locatie))) 
+
+aantallen_beverlo_punten <- aantallen_beverlo %>%
+  filter(!is.na(x)) %>%
+  filter(primaire_soort) %>%
+  group_by(soortgroep, meetnet, locatie, sublocatie, datum, visit_id, sample_id, soort_nl, soort_wet, levensstadium, x, y) %>%
+  summarise(aantal = sum(aantal)) %>%
+  ungroup() %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370) %>%
+  st_transform(crs = 4326) %>%
+  mutate(type_telling = "punt") %>%
+  rename(geom = geometry)
+
+aantallen_beverlo_locatie <- aantallen_beverlo %>%
+  filter(is.na(x)) %>%
+  filter(primaire_soort) %>%
+  group_by(soortgroep, meetnet, locatie, sublocatie, datum, visit_id, sample_id, soort_nl, soort_wet, levensstadium) %>%
+  summarise(aantal = sum(aantal)) %>%
+  ungroup() %>%
+  mutate(locatie = str_to_lower(locatie),
+         sublocatie = str_to_lower(sublocatie)) %>%
+  mutate(type_telling = "locatie")
+
+aantallen_beverlo_locatie_sf <- locaties_beverlo_centroid %>%
+  inner_join(aantallen_beverlo_locatie, by = c("meetnet", "locatie", "sublocatie"))
+
+aantallen_beverlo_sf <- aantallen_beverlo_locatie_sf %>%
+  bind_rows(aantallen_beverlo_punten) %>%
+  bind_rows(aantallen_beverlo_planten) %>%
+  mutate(jaar = year(datum),
+         type_waarneming = ifelse(aantal > 0, "soort aanwezig", "nulwaarneming")) %>%
+  left_join(bezoeken_beverlo, by = "visit_id") 
+
+aantallen_beverlo_bezoek <- aantallen_beverlo_sf %>%
+  st_drop_geometry() %>%
+  group_by(soortgroep, meetnet, jaar, datum, visit_id, locatie, soort_nl, levensstadium) %>%
+  summarise(aantal = sum(aantal)) %>%
+  ungroup() 
+
+aantallen_beverlo_locatie_jaar <- aantallen_beverlo_bezoek %>%
+  group_by(soortgroep, meetnet, jaar, locatie, soort_nl, levensstadium) %>%
+  summarise(aantal_mean = mean(aantal)) %>%
+  ungroup()
+
+aantallen_beverlo_jaar <- aantallen_beverlo_bezoek %>%
+  group_by(soortgroep, meetnet, jaar, soort_nl, levensstadium) %>%
+  summarise(aantal_mean = mean(aantal)) %>%
+  ungroup()
+
+antallen_beverlo_totaal <- aantallen_beverlo_bezoek %>%
+  group_by(soortgroep, meetnet,soort_nl, levensstadium) %>%
+  summarise(aantal_totaal = sum(aantal)) %>%
+  ungroup()
+
+```
+
+
+
+
+
+```{r}
+
+soortgroepen <- unique((antallen_beverlo_totaal %>%
+  filter(aantal_totaal > 0))$soortgroep)
+
+meetnetten <- unique((antallen_beverlo_totaal %>%
+  filter(aantal_totaal > 0))$meetnet)
+```
+        
+\newpage
+
+# Meetnet Gentiaanblauwtje
+
+```{r}
+
+meetnet_select <- "Gentiaanblauwtje"
+
+locaties_meetnet <- locaties_beverlo %>%
+  filter(meetnet == meetnet_select)
+
+aanwezigheden_meetnet <- aantallen_beverlo_sf %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(aantal > 0)
+
+aantallen_meetnet <- aantallen_beverlo_sf %>%
+  filter(meetnet == meetnet_select)
+
+```
+
+```{r, fig.height= 3, eval = !html_output }
+locaties_meetnet %>%
+  ggplot() +
+ geom_sf(data = militair_domein_beverlo) +
+  geom_sf(aes(fill = Meetnetlocatie))  +
+  theme_void() 
+
+```
+
+
+```{r}
+
+n_locaties <- length(unique(locaties_meetnet$locatie))
+
+locaties_meetnet <- locaties_meetnet %>%
+  mutate(locatie = factor(locatie))
+
+factpal <- colorFactor(INBOtheme::inbo_palette(n_locaties), locaties_meetnet$locatie)
+
+map <- locaties_meetnet %>%
+  leaflet() %>%
+  addTiles() %>%
+  #addPolygons(data = militair_domein_beverlo) %>%
+  addPolygons( label = ~locatie, color = ~factpal(locatie)) %>%
+  addCircleMarkers(data = aanwezigheden_meetnet, radius = 2) %>%
+  addLegend(pal = factpal, values = ~Meetnetlocatie, opacity = 1)
+
+mapshot(map, file = str_c(meetnet_select,".png"))
+
+
+```
+
+```{r, out.width= "100%", eval = !html_output}
+knitr::include_graphics(str_c(meetnet_select,".png"))
+```
+
+```{r, eval = html_output}
+
+sd <- SharedData$new(aantallen_meetnet)
+
+bscols(widths = c(6,6),
+       filter_checkbox(id = "jaar", label = "Selecteer jaar", sharedData = sd, group = ~jaar, columns = 4),
+       filter_checkbox(id = "nulw", label = "Selecteer type waarneming", sharedData = sd, group = ~type_waarneming))
+
+n_locaties <- length(unique(locaties_meetnet$Meetnetlocatie))
+
+factpal <- colorFactor(INBOtheme::inbo_palette(n_locaties), locaties_meetnet$Meetnetlocatie)
+
+locaties_meetnet %>%
+  leaflet() %>%
+  addTiles() %>%
+  #addPolygons(data = militair_domein_beverlo) %>%
+  addPolygons(label = ~Meetnetlocatie, color = ~factpal(Meetnetlocatie)) %>%
+  addCircleMarkers(data = sd, label = ~str_c(datum, " ", meetnet, " = ", aantal, " eitjes"), radius = ~log(aantal+0.01)) %>%
+  addLegend(pal = factpal, values = ~Meetnetlocatie, opacity = 1)
+```
+
+
+\newpage
+
+```{r, fig.height= 3, fig.width = 5}
+aantallen_beverlo_jaar %>%
+  filter(meetnet == meetnet_select) %>%
+  ggplot(aes(x = jaar, y = aantal_mean)) +
+  geom_point(alpha = 0.8, colour = "green", size = 3) +
+  labs(y = "Gemiddeld aantal getelde eitjes", x = "Jaar") +
+  lims(y = c(0, NA)) +
+  facet_wrap(~meetnet)
+```
+
+
+
+```{r, fig.width= 8}
+aantallen_beverlo_locatie_jaar %>%
+  filter(meetnet == meetnet_select) %>%
+  ggplot(aes(x = jaar, y = aantal_mean)) +
+  geom_point(alpha = 0.8, colour = "green", size = 3) +
+  labs(y = "Aantal getelde eitjes", x = "Jaar") +
+  lims(y = c(0, NA)) +
+  facet_wrap(~locatie)
+```
+
+
+                                      
+                                       
+                                       
+                                       
+                                       
+                                       
+                                       
+                                       
+                                       
+                                       
+                                         
+
+\newpage
+
+# Meetnet Kommavlinder
+
+```{r}
+
+meetnet_select <- "Kommavlinder"
+
+locaties_meetnet <- sublocaties_beverlo %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(str_detect(geom_text, "LINE")) %>%
+  group_by(Meetnetlocatie) %>%
+  summarise(n_secties = n()) %>%
+  ungroup() %>%
+  st_transform(crs = 31370) %>%
+  st_buffer(30) %>%
+  st_transform(4326)
+
+aanwezigheden_meetnet <- aantallen_beverlo_sf %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(aantal > 0)
+
+aantallen_meetnet <- aantallen_beverlo_sf %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(voor_analyse) %>%
+  filter(sublocatie %in% c("sectie1", "sectie2", "sectie3", "sectie4", "sectie5","sectie6", "sectie7", "sectie8", "sectie9", "sectie10", "sectie11", "sectie20"))
+```
+
+
+```{r, fig.height= 3, eval = !html_output}
+locaties_meetnet %>%
+  ggplot() +
+ geom_sf(data = militair_domein_beverlo) +
+  geom_sf(aes(fill = Meetnetlocatie))  +
+  theme_void() 
+```
+
+```{r, out.width= "100%"}
+
+center_loc <- locaties_meetnet %>%
+      st_centroid() %>%
+      st_coordinates()
+
+n_locaties <- length(unique(locaties_meetnet$Meetnetlocatie))
+
+factpal <- colorFactor(INBOtheme::inbo_palette(n_locaties), locaties_meetnet$locatie)
+
+map <- locaties_meetnet %>%
+  leaflet() %>%
+  addTiles() %>%
+  setView(lng = center_loc[1], lat = center_loc[2], zoom = 15) %>%
+  addPolygons( label = ~Meetnetlocatie, color = ~factpal(Meetnetlocatie)) %>%
+  addCircleMarkers(data = aanwezigheden_meetnet, radius = 2) %>%
+  addLegend(pal = factpal, values = ~Meetnetlocatie, opacity = 1)
+
+mapshot(map, file = str_c(meetnet_select,".png"))
+
+```
+
+```{r, out.width= "100%", eval = !html_output}
+knitr::include_graphics(str_c(meetnet_select,".png"))
+```
+
+```{r, eval = html_output}
+
+sd <- SharedData$new(aantallen_meetnet)
+
+bscols(widths = c(6,6),
+       filter_checkbox(id = "jaar", label = "Selecteer jaar", sharedData = sd, group = ~jaar, columns = 4),
+       filter_checkbox(id = "nulw", label = "Selecteer type waarneming", sharedData = sd, group = ~type_waarneming))
+
+n_locaties <- length(unique(locaties_meetnet$Meetnetlocatie))
+
+factpal <- colorFactor(INBOtheme::inbo_palette(n_locaties), locaties_meetnet$Meetnetlocatie)
+
+locaties_meetnet %>%
+  leaflet() %>%
+  addTiles() %>%
+  #addPolygons(data = militair_domein_beverlo) %>%
+  addPolygons(label = ~Meetnetlocatie, color = ~factpal(Meetnetlocatie)) %>%
+  addCircleMarkers(data = sd, label = ~str_c(datum, " ", meetnet, " = ", aantal), radius = ~aantal) %>%
+  addLegend(pal = factpal, values = ~Meetnetlocatie, opacity = 1)
+```
+
+\newpage
+
+```{r, fig.height= 3, fig.width= 5}
+aantallen_beverlo_locatie_jaar %>%
+  filter(meetnet == meetnet_select) %>%
+  ggplot(aes(x = jaar, y = aantal_mean)) +
+  geom_point(alpha = 0.8, colour = "green", size = 3) +
+  labs(y = "Gemiddeld aantal indiviuen", x = "Jaar") +
+  lims(y = c(0, NA)) +
+  facet_wrap(~locatie) +
+  facet_wrap(~meetnet)
+```
+\newpage
+
+# Meetnet Heivlinder
+
+```{r}
+
+meetnet_select <- "Heivlinder"
+
+locaties_transect_meetnet <- sublocaties_beverlo %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(str_detect(geom_text, "LINE")) %>%
+  group_by(Meetnetlocatie) %>%
+  summarise(n_secties = n()) %>%
+  ungroup() %>%
+  st_transform(crs = 31370) %>%
+  st_buffer(30) %>%
+  st_transform(4326)
+
+locaties_meetnet <- locaties_beverlo %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(!locatie %in% locaties_transect_meetnet$Meetnetlocatie) 
+
+locaties_meetnet <-  bind_rows(locaties_transect_meetnet,
+            locaties_meetnet) 
+
+aanwezigheden_meetnet <- aantallen_beverlo_sf %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(aantal > 0)
+
+aantallen_meetnet <- aantallen_beverlo_sf %>%
+  filter(meetnet == meetnet_select)
+
+```
+
+```{r, fig.height= 3, eval = !html_output }
+locaties_meetnet %>%
+  ggplot() +
+ geom_sf(data = militair_domein_beverlo) +
+  geom_sf(aes(fill = Meetnetlocatie)) +
+  theme_void()
+```
+
+```{r, out.width= "100%"}
+
+
+n_locaties <- length(unique(locaties_meetnet$Meetnetlocatie))
+
+factpal <- colorFactor(INBOtheme::inbo_palette(n_locaties), locaties_meetnet$Meetnetlocatie)
+
+map <- locaties_meetnet %>%
+  leaflet() %>%
+  addTiles() %>%
+  addPolygons( label = ~Meetnetlocatie, color = ~factpal(Meetnetlocatie)) %>%
+  addCircleMarkers(data = aanwezigheden_meetnet, radius = 2) %>%
+  addLegend(pal = factpal, values = ~Meetnetlocatie, opacity = 1)
+
+mapshot(map, file = str_c(meetnet_select,".png"))
+
+```
+
+```{r, out.width= "100%", eval = !html_output}
+knitr::include_graphics(str_c(meetnet_select,".png"))
+```
+
+```{r, eval = html_output}
+
+sd <- SharedData$new(aantallen_meetnet)
+
+bscols(widths = c(6,6),
+       filter_checkbox(id = "jaar", label = "Selecteer jaar", sharedData = sd, group = ~jaar, columns = 4),
+       filter_checkbox(id = "nulw", label = "Selecteer type waarneming", sharedData = sd, group = ~type_waarneming))
+
+n_locaties <- length(unique(locaties_meetnet$Meetnetlocatie))
+
+factpal <- colorFactor(INBOtheme::inbo_palette(n_locaties), locaties_meetnet$Meetnetlocatie)
+
+locaties_meetnet %>%
+  leaflet() %>%
+  addTiles() %>%
+  #addPolygons(data = militair_domein_beverlo) %>%
+  addPolygons(label = ~Meetnetlocatie, color = ~factpal(Meetnetlocatie)) %>%
+  addCircleMarkers(data = sd, label = ~str_c(datum, " ", meetnet, " = ", aantal), radius = ~aantal) %>%
+  addLegend(pal = factpal, values = ~Meetnetlocatie, opacity = 1)
+```
+
+
+\newpage
+
+```{r, fig.height= 3, fig.width = 5}
+aantallen_beverlo_jaar %>%
+  filter(meetnet == meetnet_select) %>%
+  ggplot(aes(x = jaar, y = aantal_mean)) +
+  geom_point(alpha = 0.8, colour = "green", size = 3) +
+  labs(y = "Gemiddeld aantal indiviuen", x = "Jaar") +
+  lims(y = c(0, NA)) +
+  facet_wrap(~meetnet)
+```
+
+```{r, fig.height = 3, fig.width = 6}
+aantallen_beverlo_locatie_jaar %>%
+  filter(meetnet == meetnet_select) %>%
+  ggplot(aes(x = jaar, y = aantal_mean)) +
+  geom_point(alpha = 0.8, colour = "green", size = 3) +
+  labs(y = "Aantal getelde individuen", "Jaar") +
+  lims(y = c(0, NA)) +
+  facet_wrap(~locatie)
+```
+
+\newpage
+
+# Meetnet Rugstreeppad
+
+```{r}
+
+meetnet_select <- "Rugstreeppad"
+
+locaties_meetnet <- locaties_beverlo %>%
+  filter(meetnet == meetnet_select) 
+
+aanwezigheden_meetnet <- aantallen_beverlo_sf %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(aantal > 0)
+
+aantallen_meetnet <- aantallen_beverlo_sf %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(levensstadium %in% c("adult", "larve")) %>%
+  filter(aantal > 0)
+```
+
+
+```{r, fig.height= 3, eval = !html_output }
+locaties_meetnet %>%
+  ggplot() +
+ geom_sf(data = militair_domein_beverlo) +
+  geom_sf(aes(fill = Meetnetlocatie), alpha = 0.6) +
+  theme_void()
+```
+
+```{r, out.width= "100%"}
+
+n_locaties <- length(unique(locaties_meetnet$Meetnetlocatie))
+
+factpal <- colorFactor(INBOtheme::inbo_palette(n_locaties), locaties_meetnet$Meetnetlocatie)
+
+map <- locaties_meetnet %>%
+  leaflet() %>%
+  addTiles() %>%
+  addPolygons( label = ~Meetnetlocatie, color = ~factpal(Meetnetlocatie)) %>%
+  addCircleMarkers(data = aanwezigheden_meetnet, radius = 2) %>%
+  addLegend(pal = factpal, values = ~Meetnetlocatie, opacity = 1)
+
+mapshot(map, file = str_c(meetnet_select,".png"))
+
+```
+
+```{r, out.width= "100%", eval = !html_output}
+knitr::include_graphics(str_c(meetnet_select,".png"))
+```
+
+```{r, eval = html_output}
+
+sd <- SharedData$new(aantallen_meetnet)
+
+bscols(widths = c(6,6),
+       filter_checkbox(id = "jaar", label = "Selecteer jaar", sharedData = sd, group = ~jaar, columns = 4),
+       filter_checkbox(id = "nulw", label = "Selecteer type waarneming", sharedData = sd, group = ~type_waarneming))
+
+n_locaties <- length(unique(locaties_meetnet$Meetnetlocatie))
+
+factpal <- colorFactor(INBOtheme::inbo_palette(n_locaties), locaties_meetnet$Meetnetlocatie)
+
+locaties_meetnet %>%
+  leaflet() %>%
+  addTiles() %>%
+  #addPolygons(data = militair_domein_beverlo) %>%
+  addPolygons(label = ~Meetnetlocatie, color = ~factpal(Meetnetlocatie)) %>%
+  addCircleMarkers(data = sd, label = ~str_c(datum, " ", meetnet, " = ", aantal, " ", levensstadium), radius = ~log(aantal + 0.01)) %>%
+  addLegend(pal = factpal, values = ~Meetnetlocatie, opacity = 1)
+```
+
+```{r, fig.height= 3, fig.width= 5}
+aantallen_beverlo_jaar %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(aantal_mean > 0) %>%
+  ggplot(aes(x = factor(jaar), y = aantal_mean)) +
+  geom_point(alpha = 0.8, colour = "green", size = 3) +
+  labs(y = "Gemiddeld aantal indiviuen", x = "Jaar") +
+  lims(y = c(0, NA)) +
+  facet_wrap(~meetnet + levensstadium, scale = "free")
+```
+
+
+\newpage
+
+# Meetnet Witte waterranonkel
+
+```{r}
+
+meetnet_select <- "Witte waterranonkel"
+
+locaties_meetnet <- locaties_beverlo %>%
+  filter(meetnet == meetnet_select)
+
+aanwezigheden_meetnet <- aantallen_beverlo_sf %>%
+  filter(meetnet == meetnet_select) %>%
+  filter(aantal > 0)
+
+aantallen_meetnet <- aantallen_beverlo_sf %>%
+  filter(meetnet == meetnet_select) 
+```
+
+```{r, fig.height= 3, eval = !html_output}
+locaties_meetnet %>%
+  ggplot() +
+ geom_sf(data = militair_domein_beverlo) +
+  geom_sf(aes(fill = Meetnetlocatie)) +
+  theme_void() 
+```
+
+```{r, out.width= "100%"}
+
+center_loc <- locaties_meetnet %>%
+      st_centroid() %>%
+      st_coordinates()
+
+n_locaties <- length(unique(locaties_meetnet$Meetnetlocatie))
+
+factpal <- colorFactor(INBOtheme::inbo_palette(n_locaties), locaties_meetnet$Meetnetlocatie)
+
+map <- locaties_meetnet %>%
+  leaflet() %>%
+  addTiles() %>%
+  setView(lng = center_loc[1], lat = center_loc[2], zoom = 16) %>%
+  addPolygons( label = ~Meetnetlocatie, color = ~factpal(Meetnetlocatie)) %>%
+  addCircleMarkers(data = aanwezigheden_meetnet, radius = 2) %>%
+  addLegend(pal = factpal, values = ~Meetnetlocatie, opacity = 1)
+
+mapshot(map, file = str_c(meetnet_select,".png"))
+
+```
+
+```{r, out.width= "100%", eval = !html_output}
+knitr::include_graphics(str_c(meetnet_select,".png"))
+```
+
+
+```{r, eval = html_output}
+
+sd <- SharedData$new(aantallen_meetnet)
+
+bscols(widths = c(6,6),
+       filter_checkbox(id = "jaar", label = "Selecteer jaar", sharedData = sd, group = ~jaar, columns = 4),
+       filter_checkbox(id = "nulw", label = "Selecteer type waarneming", sharedData = sd, group = ~type_waarneming))
+
+n_locaties <- length(unique(locaties_meetnet$Meetnetlocatie))
+
+factpal <- colorFactor(INBOtheme::inbo_palette(n_locaties), locaties_meetnet$Meetnetlocatie)
+
+locaties_meetnet %>%
+  leaflet() %>%
+  addTiles() %>%
+  #addPolygons(data = militair_domein_beverlo) %>%
+  addPolygons(label = ~Meetnetlocatie, color = ~factpal(Meetnetlocatie)) %>%
+  addCircleMarkers(data = sd, label = ~str_c(datum, " ", meetnet, " = ", aantal_min, "-", aantal_max, " m²"), radius = ~log(aantal + 0.01)) %>%
+  addLegend(pal = factpal, values = ~Meetnetlocatie, opacity = 1)
+```
+
+
+```{r, fig.height= 3, fig.width=3}
+aantallen_beverlo_locatie_jaar %>%
+  filter(meetnet == meetnet_select) %>%
+  ggplot(aes(x = jaar, y = aantal_mean)) +
+  geom_point(alpha = 0.8, colour = "green", size = 3) +
+  labs(y = "Totale oppervlakte (m²)", x = "Jaar") +
+  lims(y = c(0, NA)) +
+  facet_wrap(~meetnet)
+```
+
+
+
+
+
+
+
