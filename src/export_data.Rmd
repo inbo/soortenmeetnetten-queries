@@ -55,13 +55,10 @@ query_bezoeken <- "Select
   V.end_time, 
   V.end_date, 
   V.task_id, 
-  v.validation_status as validatie, 
+  v.validation_status as validatie,
+  v.created,
+  v.updated,
   T.name as taak, 
-  case when V.legacy_status = 1 then 'Conform protocol'
-       when V.legacy_status = -1 then 'Niet volledig conform protocol'
-       when V.legacy_status = -2 then 'Geen veldwerk mogelijk'
-       else Null
-  end as bezoek_status_oud, 
   case when V.status = 1 then 'Conform protocol'
        when V.status = -1 then 'Weersomstandigheden ongunstig'
        when V.status = -2 then 'Telmethode niet gevolgd'
@@ -123,8 +120,7 @@ query_selectLocations <- "SELECT
     INNER JOIN projects_project P ON P.id = PL.project_id
     INNER JOIN projects_projectgroup PG on PG.id = P.group_id
     LEFT JOIN accounts_user U on U.ID = PL.user_id
-and P.name <> 'Algemene Vlindermonitoring'
-and P.name <> 'Vleermuizen - Wintertellingen'"
+and P.name <> 'Algemene Vlindermonitoring'"
 
 locaties <- set_utf8(dbGetQuery(conn = con, statement = query_selectLocations))
 

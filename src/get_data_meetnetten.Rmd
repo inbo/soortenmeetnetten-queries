@@ -1,0 +1,350 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(RPostgreSQL)
+library(tidyverse)
+library(sf)
+library(git2rdata)
+library(inbodb)
+```
+
+```{r}
+library(inbodb)
+library(dplyr)
+con <- connect_inbo_dbase("S0008_00_Meetnetten")
+test <- tbl(con, sql("SELECT id, name FROM staging_Meetnetten.projects_projectgroup")) %>%
+  collect()
+test$name
+# [1] "amfibieÃ«n"        "overige"           "andere zoogdieren" "dagvlinders"       "planten"           "libellen"          "vogels"           
+# [8] "mollusken"         "vleermuizen"
+write_csv2(test, "test.csv")
+
+Encoding(test$name) <- "UTF-8"
+
+test <- tbl(conn, sql("SELECT id, name FROM staging_Meetnetten.projects_projectgroup")) %>%
+  collect()
+```
+
+```{r}
+set_utf8 <- function(x) {
+  # Declare UTF-8 encoding on all character columns:
+  chr <- sapply(x, is.character)
+  x[, chr] <- lapply(x[, chr, drop = FALSE], `Encoding<-`, "UTF-8")
+  # Same on column names:
+  Encoding(names(x)) <- "UTF-8"
+  x
+}
+```
+
+### Bezoeken
+
+```{r}
+
+query_bezoeken <- "SELECT 
+  PG.name as soortgroep, 
+  P.Name as meetnet,
+  PR.name as protocol, 
+  L.name as locatie, 
+  L1.name as hoofdlocatie,
+  V.id as visit_id,
+  v.validation_status as validatie, 
+  V.start_date as datum, 
+  V.start_time, 
+  V.end_date,
+  V.end_time,
+  V.created,
+  V.updated,
+  T.name as taak, 
+  case when V.status = 1 then 'Conform protocol'
+       when V.status = -1 then 'Weersomstandigheden ongunstig'
+       when V.status = -2 then 'Telmethode niet gevolgd'
+       when V.status = -3 then 'Geen veldwerk mogelijk - locatie ontoegankelijk'
+       when V.status = -4 then 'Geen veldwerk mogelijk - locatie ongeschikt'
+       else Null
+  end as bezoek_status, 
+  V.year_target as jaardoel, 
+  V.analysis as voor_analyse,
+  V.notes as opmerking
+  from staging_Meetnetten.Projects_project P
+    inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+    inner join staging_Meetnetten.fieldwork_visit V on V.project_id = P.id
+    inner Join staging_Meetnetten.Locations_location L on L.ID = V.location_ID
+    left outer Join staging_Meetnetten.Locations_location L1 on L1.ID = L.parent_ID
+    inner join staging_Meetnetten.Protocols_protocol PR on PR.id = V.protocol_ID
+    left outer join staging_Meetnetten.projects_task T on T.ID = V.task_id
+  Where 1=1
+"
+
+bezoeken_orig <- tbl(conn, sql(query_bezoeken)) %>%
+  collect() %>%
+  set_utf8()
+
+bezoeken <- bezoeken_orig %>%
+  mutate(jaar = as.numeric(format(datum, "%Y")),
+         doy = as.numeric(format(datum, "%j")),
+         sublocatie = ifelse(is.na(hoofdlocatie), NA, locatie),
+         locatie = ifelse(is.na(hoofdlocatie), locatie, hoofdlocatie)) %>%
+  select(-hoofdlocatie) %>%
+  group_by(meetnet, protocol, locatie, jaar, visit_id) %>%
+  mutate(i_bezoek = rank(doy)) %>%
+  ungroup() %>%
+  select(soortgroep, meetnet, protocol, locatie, sublocatie, jaar, datum, doy, i_bezoek, everything()) %>%
+  mutate(opmerking = str_replace_all(opmerking, "[\r\n]" , " "))
+
+write_vc(bezoeken, "bezoeken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "sublocatie", "visit_id"), strict = FALSE)
+```
+
+### Locaties
+
+```{r}
+query_selectLocations <- "SELECT
+    PG.name as soortgroep,
+    L.name as locatie,
+    L.id,
+    L.parent_id,
+    P.name as meetnet,
+    PL.is_sample,
+    PL.is_active,
+    PL.user_id,
+    U.first_name,
+    U.last_name,,
+    L.geom.STAsText() as geom_text
+    FROM staging_Meetnetten.locations_location L
+    INNER JOIN staging_Meetnetten.projects_projectlocation PL ON PL.location_id = L.id
+    INNER JOIN staging_Meetnetten.projects_project P ON P.id = PL.project_id
+    INNER JOIN staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+    LEFT JOIN staging_Meetnetten.accounts_user U on U.ID = PL.user_id
+and P.name <> 'Algemene Vlindermonitoring'"
+
+locaties <- set_utf8(dbGetQuery(conn = con, statement = query_selectLocations))
+
+locaties_sf <- locaties %>%
+  mutate(locatie_type = ifelse(is.na(parent_id),  "locatie", "sublocatie"),
+         meetnet_type = ifelse(meetnet %in% c("Otter", "Gerande oeverspin", "Vliegend hert", "Roestbruine kniptor") | soortgroep == "mollusken", "inhaalslag", "meetnet"),
+         type = ifelse(meetnet_type == "meetnet",
+                       ifelse(is_sample == 1, "meetnetlocatie", "optionele locatie"),
+                       ifelse(meetnet_type == "inhaalslag", "locatie inhaalslag", NA))) %>%
+  select(soortgroep, meetnet, locatie, is_active, is_sample, locatie_type, everything()) %>%
+  mutate(geom = geom_text) %>%
+  st_as_sf(wkt = "geom", crs = 4326)
+
+locaties_hoofdlocatie <- locaties_sf %>%
+  filter(locatie_type == "locatie") %>%
+  arrange(soortgroep, meetnet, locatie)
+
+namen_hoofdlocaties <- locaties_hoofdlocatie %>%
+  st_drop_geometry() %>%
+  mutate(geclaimd = ifelse(is.na(user_id), "nee", "ja")) %>%
+  select(meetnet, locatie, locatie_id = id,  geclaimd, geclaimd_door)
+
+sublocations_transecten <- locaties_sf %>%
+  filter(locatie_type == "sublocatie") %>%
+  select(-geclaimd_door) %>%
+  arrange(soortgroep, meetnet, locatie) %>%
+  mutate(sectie_lijn = (substr(geom_text, 1, 4) == "LINE") | (substr(geom_text, 1, 9) == "MULTILINE")) %>%
+  rename(sublocatie = locatie, locatie_id = parent_id) %>%
+  left_join(namen_hoofdlocaties, by = c("meetnet", "locatie_id")) %>%
+  arrange(soortgroep, meetnet, locatie, sublocatie) %>%
+  filter(!is.na(locatie))
+```
+
+
+### Aantallen
+
+```{r}
+query_aantallen <- "select PG.name as soortgroep
+    , P.name as meetnet
+    , L.name as locatie
+    , L1.name as sublocatie
+    , PR.i18n->>'name_nl' as protocol
+    , V.id as visit_id
+    , V.start_date as datum
+    , SA.Not_Counted as niet_geteld
+    , SA.is_complete as checklist
+    , SA.Notes as opmerkingen
+    , O.species_ID
+    , SP.i18n->>'name_nl' as soort_nl
+    , SP.scientific_name as soort_wet
+    , PS.is_primary as primaire_soort
+    , O.sample_id
+    , O.sex as geslacht
+    , O.id as observation_id
+    , ACT.i18n->>'name_nl' as activiteit
+    , LS.i18n->>'name_nl' as levensstadium
+    , O.number_min as aantal
+    , PSC.name as type_aantal
+    , st_astext(O.geom) as geom_text
+ from Projects_project P
+    inner join projects_projectgroup PG on PG.id = P.group_id
+    inner join fieldwork_visit V on V.project_ID = P.ID
+    left Outer join protocols_protocol PR on PR.id = V.protocol_id
+    left outer join fieldwork_sample SA on SA.visit_ID = V.ID
+    left outer join fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join protocols_scale PSC on O.scale_ID = PSC.ID
+    left outer join Species_species SP on SP.ID = O.species_id
+    left outer join species_activity ACT on ACT.id = O.activity_id
+    left outer join species_lifestage LS on LS.id = O.life_stage_id
+    left outer join Locations_location L ON L.ID = V.location_ID
+    left outer Join Locations_location L1 on L1.ID = SA.location_id
+    left outer join accounts_user U on U.ID = V.user_id
+    left outer join projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+where 1=1
+    and P.name <> 'Algemene Broedvogelmonitoring (ABV)'
+    and P.name <> 'Algemene Vlindermonitoring'
+    and P.name <> 'Vleermuizen - Wintertellingen'
+    and SA.notes <> 'dummy sample'
+    and PG.name <> 'planten'
+    and V.validation_status <> -1 --afgekeurd
+Order by PG.name
+    , P.name
+    , L.Name
+    , V.start_date
+    , L1.Name"
+
+aantallen_orig <- set_utf8(dbGetQuery(con, query_aantallen)) 
+
+#aantallen_orig <- st_read(dsn = con, query = query_aantallen) 
+
+aantallen_punt <- aantallen_orig %>%
+  filter(str_detect(geom_text, "POINT")) %>%
+  mutate(geom = geom_text) %>%
+  st_as_sf(wkt = "geom_text", crs = 4326) %>%
+  st_transform(31370)
+
+aantallen_punt <- aantallen_punt  %>%
+  mutate(x = st_coordinates(aantallen_punt)[, 1],
+         y = st_coordinates(aantallen_punt)[, 2]) %>%
+  st_drop_geometry() %>%
+  set_utf8() %>%
+  select(-geom)
+
+aantallen_overig <- aantallen_orig %>%
+  filter(!str_detect(geom_text, "POINT") | is.na(geom_text)) %>% 
+  set_utf8()
+
+aantallen_orig <- bind_rows(aantallen_punt,
+                             aantallen_overig)
+
+aantallen <- aantallen_orig %>%
+  mutate(jaar = as.numeric(format(datum, "%Y")),
+         doy = as.numeric(format(datum, "%j"))) %>%
+  mutate(levensstadium = ifelse(levensstadium == "adult" & soortgroep == "libellen", "imago", levensstadium)) %>%
+  select(soortgroep, meetnet, protocol, locatie, jaar, datum, doy, everything())
+
+query_aantallen_planten <- "select O.id
+    , PG.name as soortgroep
+    , P.name as meetnet
+    , L.name as locatie
+    , PR.i18n->>'name_nl' as protocol
+    , V.id as visit_id
+    , V.start_date as datum
+    , v.validation_status as validatie
+    , st_astext(v.track_geom) as track_geom_text
+    , SA.Not_Counted as niet_geteld
+    , SA.Notes as opm
+    , O.species_ID
+    , SP.i18n->>'name_nl' as soort_nl
+    , SP.scientific_name as soort_wet
+    , PS.is_primary as primaire_soort
+    , O.sample_id
+    , st_astext(O.geom) as geom_text
+    , S.i18n->>'name_nl' as schaal
+    , SC.code
+    , O.number_min as aantal_min
+    , O.number_max as aantal_max
+    , SC.description as beschrijving_floroncode
+    , u.first_name
+    , u.last_name
+ from Projects_project P
+    inner join projects_projectgroup PG on PG.id = P.group_id
+    inner join fieldwork_visit V on V.project_ID = P.ID
+    inner join protocols_protocol PR on PR.id = V.protocol_id
+    inner join fieldwork_sample SA on SA.visit_ID = V.ID
+    inner join fieldwork_observation O on O.sample_ID = SA.ID
+    inner join Species_species SP on SP.ID = O.species_id
+    inner join species_activity ACT on ACT.id = O.activity_id
+    inner join species_lifestage LS on LS.id = O.life_stage_id
+    inner join protocols_scalecode SC on SC.id = O.scale_code_id
+    inner join protocols_scale S on S.id = O.scale_id
+    inner join Locations_location L ON L.ID = V.location_ID
+    inner Join Locations_location L1 on L1.ID = SA.location_id
+    inner join accounts_user U on U.ID = V.user_id
+    inner join projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+where 1=1
+    and PG.name = 'planten'
+Order by PG.name
+    , P.name
+    , L.Name
+    , V.start_date
+    , L1.Name"
+
+aantallen_planten <- set_utf8(dbGetQuery(con, query_aantallen_planten)) %>%
+  set_utf8() %>%
+  mutate(puntlocatie = ifelse(is.na(geom_text), 0, 1),
+         track = ifelse(is.na(track_geom_text), 0, 1))
+
+aantallen_planten_puntlocaties <- aantallen_planten %>%
+  filter(puntlocatie == 1) %>%
+  mutate(waarnemer = str_c(first_name, " ", last_name)) %>%
+  select(meetnet, protocol, locatie, datum,  soort_w = soort_wet, visit_id, waarnemer, validatie_bezoek = validatie, track, sample_id, schaal, code, beschrijving_floroncode, opm, geom = geom_text) %>%
+  st_as_sf(wkt = "geom", crs = 4326)
+  
+aantallen_planten <- aantallen_planten %>%
+  select(-geom_text, -track_geom_text)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+query_wvl <- "SELECT        
+	staging_Meetnetten.fieldwork_visit.project_id
+	, dbo.DimSpecies.SpeciesName
+	, staging_Meetnetten.fieldwork_visit.id
+	, staging_Meetnetten.locations_location.name
+	, staging_Meetnetten.fieldwork_sample.start_date
+	, staging_Meetnetten.fieldwork_sample.end_date
+	, staging_Meetnetten.fieldwork_sample.start_time
+	, staging_Meetnetten.fieldwork_visit.user_id
+	, staging_Meetnetten.fieldwork_visit.validation_status
+	, staging_Meetnetten.protocols_scalecode.code
+	, fo.number_min
+	, fo.number_max
+	, fo.geom
+	, fo.geom.STAsText() as wkt
+	, fo.geom.STX as X
+	, fo.geom.STY as Y
+FROM            staging_Meetnetten.fieldwork_observation fo INNER JOIN
+                         staging_Meetnetten.fieldwork_sample ON fo.sample_id = staging_Meetnetten.fieldwork_sample.id 
+						 INNER JOIN
+                         staging_Meetnetten.fieldwork_visit ON staging_Meetnetten.fieldwork_sample.visit_id = staging_Meetnetten.fieldwork_visit.id 
+						 INNER JOIN
+                         staging_Meetnetten.protocols_scalecode ON fo.scale_code_id = staging_Meetnetten.protocols_scalecode.id 
+						 INNER JOIN
+                         staging_Meetnetten.locations_location ON staging_Meetnetten.fieldwork_visit.location_id = staging_Meetnetten.locations_location.id 
+						 INNER JOIN
+                         dbo.DimSpecies ON fo.species_id = dbo.DimSpecies.SpeciesID
+WHERE        (staging_Meetnetten.fieldwork_visit.validation_status <> - 1)  
+			AND (dbo.DimSpecies.SpeciesGroupID = 7) 
+			AND (staging_Meetnetten.protocols_scalecode.code <> N'0')      
+			--AND (dbo.DimSpecies.SpeciesName = N'Krabbenscheer')	
+ORDER BY dbo.DimSpecies.SpeciesName
+			,staging_Meetnetten.locations_location.name
+			,staging_Meetnetten.fieldwork_sample.start_date"
+
+test <- dbGetQuery(con, query_wvl)
+```
+
