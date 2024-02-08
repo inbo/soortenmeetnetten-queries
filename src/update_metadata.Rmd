@@ -50,6 +50,8 @@ telperiodes_taak <- taken %>%
   filter(jaar == 2023) %>%
   select(soortgroep, meetnet, protocol, jaar, taak_start, taak_end) %>%
   unique() %>%
+  mutate(protocol = ifelse(str_detect(protocol, "Vleermuizen - Wintertelling"), "Vleermuizen - Wintertelling", protocol),
+         protocol = ifelse(protocol %in% c("Vleermuizen - Uitvliegtelling", "Vleermuizen - Zoldertelling"), "Vleermuizen - Zomertelling", protocol)) %>%
   group_by(meetnet, protocol) %>%
   mutate(periode = rank(taak_start)) %>%
   ungroup() %>%
@@ -67,9 +69,12 @@ telperiodes_taak <- telperiodes_taak %>%
 temp <- bezoeken %>%
   filter(jaar >= 2018) %>%
   distinct(soortgroep, meetnet, protocol) %>%
+  mutate(protocol = ifelse(str_detect(protocol, "Vleermuizen - Wintertelling"), "Vleermuizen - Wintertelling", protocol),
+         protocol = ifelse(protocol %in% c("Vleermuizen - Uitvliegtelling", "Vleermuizen - Zoldertelling"), "Vleermuizen - Zomertelling", protocol)) %>%
   bind_rows(tibble(soortgroep = c("reptielen", "amfibieën"),
                    meetnet = c("Gladde slang", "Poelkikker"),
-                   protocol = c("Gladde slang - Telling onder platen", "Poelkikker - DNA larven")))
+                   protocol = c("Gladde slang - Telling onder platen", "Poelkikker - DNA larven"))) %>%
+  unique()
 
 telperiodes_wp <- werkpakketten %>%
   group_by(meetnet) %>%

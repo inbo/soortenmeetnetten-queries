@@ -16,7 +16,7 @@ library(units)
 library(conflicted)
 conflicts_prefer(dplyr::filter())
 
-year_update <- 2022
+year_update <- 2023
 ```
 
 # Hamster en Das
@@ -32,13 +32,13 @@ data_burchten <- read_vc(file = "data_burchten", root = "../processed") %>%
 
 ```{r}
 
-data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2022/Data niet in Meetnetten.be/Hamster - Oplevering data Meetnetten 2022"
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2023/Data niet in Meetnetten.be/Hamster - Oplevering data Meetnetten 2023"
 
-burchten_nieuw_sf <- read_sf(data_path, "Meetnet Hamster_2022_waarnemingen",
+burchten_nieuw_sf <- read_sf(data_path, "Meetnet Hamster_2023_waarnemingen",
                              crs = 31370)
 
 burchten_nieuw <- burchten_nieuw_sf %>%
-  rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh, hoofdteller = wnr) %>%
+  rename(id_wnm = id, soort_wet = naam_lat, soort_nl = naam_nl, opmerking = bijzonderh) %>%
   mutate(meetnet = "Hamster",
          protocol = "Hamster - Burcht",
          locatie = "Widooie",
@@ -48,7 +48,7 @@ burchten_nieuw <- burchten_nieuw_sf %>%
          y = st_coordinates(geometry)[, 2],
          visit_id = str_c("extern_", meetnet, jaar, 1:nrow(burchten_nieuw_sf))) %>%
   st_drop_geometry() %>%
-  select(meetnet, protocol, locatie, visit_id, jaar, datum, soort_wet, soort_nl, aantal, zeker, opmerking, x, y, id_wnm, hoofdteller,)
+  select(meetnet, protocol, locatie, visit_id, jaar, datum, soort_wet, soort_nl, aantal, zeker, opmerking, x, y, id_wnm)
 
 burchten_nieuw <- burchten_nieuw %>%
   anti_join(data_burchten, by = c("datum", "x", "y"))
@@ -70,7 +70,7 @@ if (nrow(burchten_nieuw) > 0) {
 
 ```{r}
 
-percelen_update_sf_orig <- read_sf(data_path, "Meetnet Hamster_2022_percelen")
+percelen_update_sf_orig <- read_sf(data_path, "Meetnet Hamster_2023_percelen")
 
 percelen_sf <- percelen_update_sf_orig %>%
   rename(id_perceel = id, aantal_tellers = `#tellers`,   oppervlakte_ha = `opp (ha)`) %>%
@@ -106,7 +106,7 @@ burchten_nieuw_sf %>%
   addTiles() %>%
   addCircleMarkers() %>%
   addPolygons(data = st_transform(locaties_hamster, crs = 4326)) %>%
-  addPolygons(data= st_transform(percelen_sf, crs = 4326))
+  addPolygons(data = st_transform(percelen_sf, crs = 4326))
 ```
 
 
