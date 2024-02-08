@@ -92,8 +92,8 @@ write.csv2(tellers_n_dagen_totaal, "processed/vrijwilligers_dagen_totaal.csv", r
 
 ##############################################################
 
-militaire_domeinen <- read_sf(dsn = "gis/militaire_domeinen", layer = "MilitaireDomeinen_BeheerANB_DissolveWGS84") %>%
-  select(domein_id =DomeinID)
+militaire_domeinen <- read_sf(dsn = "gis/militaire_domeinen/vleermuizen", layer = "mil_domeinen_vleermuizen") %>%
+  select(naam = NAAM)
 
 militaire_domeinen_2 <- militaire_domeinen %>%
   st_transform(31370)
@@ -111,15 +111,16 @@ locaties_mil_domeinen <- locaties %>%
   select(meetnet, locatie, domein_id, geclaimd_door) %>%
   st_drop_geometry()
 
-locatie_users_claim <- read_vc(root = "raw", "locatie_users") %>%
-  mutate(type_teller = "geclaimd")
+locatie_users_claim <- read_vc(root = "raw", "locatie_users_20240115") %>%
+  mutate(type_teller = "hoofdteller")
 
-locatie_users_reserve <- read_vc(root ="raw", "locatie_users_reserve") %>%
-  mutate(type_teller = "reserve")
+locatie_users_reserve <- read_vc(root = "raw", "locatie_users_reserve_20240115") %>%
+  mutate(type_teller = "reserveteller") %>%
+  filter(interested = TRUE)
 
 locatie_users <- bind_rows(locatie_users_claim,
                            locatie_users_reserve) %>%
-  left_join(tellers_info, by = c("meetnet", "first_name", "last_name", "email"))
+  left_join(tellers_info, by = c("soortgroep","meetnet", "first_name", "last_name", "email"))
   
 locatie_users_mil_domeinen <- locatie_users %>%
   inner_join(locaties_mil_domeinen, by = c("meetnet", "locatie"))
@@ -139,6 +140,27 @@ users_mil_domeinen <- locatie_users_mil_domeinen %>%
 
 write.csv2(users_mil_domeinen, "processed/tellers_militaire_domeinen/tellers_militaire_domeinen.csv", row.names = FALSE)
  
+locaties_md_vleermuizen <- locaties %>%
+  #filter(meetnet == "Vleermuizen - Wintertellingen") %>%
+  st_transform(31370) %>%
+  filter(is_active) %>%
+  filter(locatie_type == "locatie") %>%
+  st_join(militaire_domeinen_2) %>%
+  filter(!is.na(naam)) %>%
+  select(naam_md = naam, meetnet, locatie, eurobats = is_sample) %>%
+  st_drop_geometry() %>%
+  left_join(select(locatie_users, meetnet, locatie, type_teller, first_name, last_name, email), by = c("meetnet", "locatie"))
+  
+locaties_md_vleermuizen_wide <- locaties_md_vleermuizen %>%
+  mutate(naam = str_c(first_name, last_name, sep = " ")) %>%
+  group_by(meetnet, locatie, naam_md, eurobats, type_teller) %>%
+  summarise(naam = str_c(naam, collapse = "; "),
+            email = str_c(email, collapse = "; ")) %>%
+  ungroup() %>%
+  pivot_wider(names_from = "type_teller", values_from = c("naam", "email")) %>%
+  select(meetnet, naam_md, locatie, eurobats, naam_hoofdteller, email_hoofdteller, naam_reserveteller, email_reserveteller)
+
+write_csv2(locaties_md_vleermuizen, "processed/tellers_militaire_domeinen/tellers_militaire_domeinen.csv", na = "")
 
 ##############################################################
 
@@ -392,7 +414,12 @@ data_hamster <- read_vc("processed/data_burchten") %>%
   select(meetnet, protocol, locatie, datum, soort_wet, soort_nl, aantal, zeker, opmerking, x, y) %>%
   arrange(datum)
 
-write_csv2(data_hamster, "output/meetnetten_burchten_hamster_2016_2022.csv")
+write_csv2(data_hamster, "output/meetnetten_burchten_hamster_2016_2023.csv")
+
+data_hamster_sf <- data_hamster %>%
+  st_as_sf(coords = c("x", "y"), crs = 31370)
+
+st_write(data_hamster_sf, "output/meetnetten_burchten_hamster_2016_2023.shp")
 
 ########################################
 
@@ -677,4 +704,74 @@ sublocaties <- read_sf(dsn = "raw/meetnetten_locaties.gpkg", layer = "transecten
 
 st_write(locaties, "output/datavraag_luis/meetnetten_locations.gpkg", "main_locations", driver = "GPKG")
 st_write(sublocaties, "output/datavraag_luis/meetnetten_locations.gpkg", "sublocations", driver = "GPKG")
+
+##################################################
+
+locaties_libellen <- get_locations_smp(species_group = "libellen") %>%
+  filter(meetnet %in% c("Speerwaterjuffer", "Maanwaterjuffer","Kempense heidelibel", "Sierlijke witsnuitlibel", "Gevlekte witsnuitlibel")) %>%
+  filter(is_active) %>%
+  arrange(meetnet, locatie) %>%
+  select(meetnet, locatie)
+
+locaties_libellen %>%
+  st_transform(31370) %>%
+  st_write("output/meetnetlocaties_libellen", "meetnetlocaties_libellen", driver = "ESRI Shapefile")
+
+##################################################
+
+kempense_heidelibel <- get_counts_smp() %>%
+  filter(meetnet == "Kempense heidelibel")
+
+aantallen_kempense_heidelibel <- kempense_heidelibel %>%
+  filter(primaire_soort) %>%
+  select(meetnet, protocol, locatie, datum, soort_nl, soort_wet, levensstadium, activiteit, geslacht, aantal, x, y)
+
+aantallen_kempense_heidelibel %>%
+  write_csv2("output/aantallen_kempense_heidelibel.csv", na = "")
+
+##################################################
+
+vroedmeesterpad <- get_counts_smp() %>%
+  filter(meetnet == "Vroedmeesterpad")
+
+aantallen_vroedmeesterpad <- vroedmeesterpad %>%
+  filter(primaire_soort) %>%
+  select(meetnet, protocol, locatie, datum, soort_nl, soort_wet, levensstadium, activiteit, geslacht, aantal, x, y)
+
+aantallen_vroedmeesterpad %>%
+  write_csv2("output/aantallen_vroedmeesterpad.csv", na = "")
+
+##########################################
+# liiiiiiiiiiiimburg
+
+limburg <- read_admin_areas(dsn = "provinces") %>%
+  filter(name == "Limburg") %>%
+  select(name) %>%
+  st_transform(crs = 4326) 
+
+locaties_limburg <- get_locations_smp() %>%
+  filter(meetnet != "Algemene Vlindermonitoring") %>%
+  filter(locatie_type != "sublocatie") %>%
+  filter(! meetnet %in% c("Hoogveenglanslibel", "Bataafse stroommossel", "Platte schijfhoren", "Vliegend hert - inhaalslag (afgerond)")) %>%
+  filter(st_is_valid(geom)) %>%
+  filter(type != "optionele locatie") %>%
+  st_join(limburg) 
+
+overzicht_limburg <- locaties_limburg %>%
+  st_drop_geometry() %>%
+  group_by(meetnet) %>%
+  summarise(deels_in_limburg = any(name == "Limburg"),
+            volledig_in_limburg = all(name == "Limburg")) %>%
+  ungroup()
+
+# das, gladde slang, watervogeltellingen, bijzonder broedvodels
+nt_in_meetnetten_tot <- 4
+
+nt_in_meetnetten_limburg <- 4
+
+totaal <- n_distinct(overzicht_limburg$meetnet) + nt_in_meetnetten_tot
+
+totaal_limburg <- sum(!is.na(overzicht_limburg$deels_in_limburg)) + nt_in_meetnetten_limburg
+
+totaal_limburg_volledig <- sum(!is.na(overzicht_limburg$volledig_in_limburg)) + 1 
 
