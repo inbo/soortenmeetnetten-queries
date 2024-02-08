@@ -64,9 +64,7 @@ provincies <- read_admin_areas(dsn = "provinces") %>%
 ```{r selecteerLocaties}
 
 locations <- locaties %>%
-  filter(!meetnet %in% c("Algemene Vlindermonitoring", 
-                         "Algemene Broedvogelmonitoring (ABV)", 
-                         "Vleermuizen - Wintertellingen",
+  filter(!meetnet %in% c("Algemene Vlindermonitoring",
                          "Bataafse stroommossel",
                          "Hoogveenglanslibel",
                          "Nauwe korfslak",
@@ -221,7 +219,7 @@ for (i in inhaalslag$meetnet) {
     filter(meetnet == i)
 
     st_write(meetnet_locations, str_c("../processed/locaties/export_locaties_versie", date, "/inhaalslag"), 
-           str_c("inhaalslag_", m, "_versie", date), 
+           str_c("inhaalslag_", i, "_versie", date), 
            driver = "ESRI Shapefile", 
            append = TRUE)
 
