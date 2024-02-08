@@ -1,0 +1,89 @@
+soortgroep;meetnet;protocol;protocol_naam;type;duur_meetcyclus;generatie;bezoeken;opstartjaar;type_soort;start_telperiode;einde_telperiode;actief
+amfibieën;Boomkikker;Amfibieën - Larven en metamorfen;Telling larven en metamorfen;Steekproef;3;generatie1;1;2016;EPS;1/06/2021;15/07/2021;1
+amfibieën;Boomkikker;Padden en kikkers - Roepkoren;Roepkoortelling;Steekproef;3;generatie1;2;2016;EPS;1/04/2021;30/06/2021;1
+amfibieën;Heikikker;Heikikker - DNA eitjes;Telling en DNA-analyse eitjes;Pilootproject;3;generatie1;2;2021;EPS;NA;NA;1
+amfibieën;Kamsalamander;Amfibieën - Fuiken;Fuikentelling;Steekproef;3;generatie1;2;2017;EPS;15/03/2021;31/05/2021;1
+amfibieën;Kamsalamander;Amfibieën - Larven en metamorfen;Telling larven en metamorfen;Steekproef;3;generatie1;1;2017;EPS;1/06/2021;15/07/2021;1
+amfibieën;Knoflookpad;Knoflookpad - Roepkoren;Roepkoortelling;Integraal;1;generatie1;2;2017;EPS;15/03/2021;30/04/2021;1
+amfibieën;Poelkikker;Padden en kikkers - Roepkoren;Roepkoortelling;Pilootproject;3;generatie1;2;2021;EPS;1/05/2021;31/05/2021;1
+amfibieën;Poelkikker;Poelkikker - DNA larven;Telling en DNA-analyse larven;Pilootproject;3;generatie1;1;2021;EPS;1/06/2021;31/07/2021;1
+amfibieën;Rugstreeppad;Rugstreeppad - Transect;Transecttelling rugstreeppad;Integraal;3;generatie1;3;2019;EPS;1/04/2021;30/06/2021;1
+amfibieën;Vuursalamander;Vuursalamander - Transect;Transecttelling vuursalamander;Integraal;1;generatie1;2;2016;VPS;15/08/2021;31/10/2021;1
+amfibieën;Vroedmeesterpad;Vroedmeesterpad - Larven;Telling larven en metamorfen;Integraal;1;generatie1;1;2022;EPS;1/06/2021;15/09/2021;1
+amfibieën;Vroedmeesterpad;Vroedmeesterpad - Roepkoren;Roepkoortelling;Integraal;1;generatie1;2;2022;EPS;1/05/2021;15/07/2021;1
+andere zoogdieren;Das;Burchtentelling das;;Integraal;3;generatie1;1;2016;VPS;NA;NA;1
+andere zoogdieren;Hamster;Burchtentelling hamster;;Integraal;1;generatie1;1;2016;EPS;NA;NA;1
+andere zoogdieren;Hazelmuis;Hazelmuis - Transect;;Integraal;1;generatie1;2;2016;EPS;3/10/2021;25/10/2021;1
+andere zoogdieren;Hazelmuis - Nestbuizen;Hazelmuis - Nestbuizen;;Integraal;1;generatie1;4;2020;EPS;15/04/2021;15/11/2021;1
+andere zoogdieren;Otter;Otter;;Inhaalslag;12;generatie1;1;2018;EPS;31/10/2021;1/04/2022;1
+dagvlinders;Aardbeivlinder;Vlinders - Transecten;;Integraal;1;generatie1;3;2017;VPS;1/05/2021;31/05/2021;1
+dagvlinders;Argusvlinder;Vlinders - Transecten;;Steekproef;3;generatie1;3;2016;VPS;1/05/2021;31/05/2021;1
+dagvlinders;Argusvlinder;Vlinders - Transecten;;Steekproef;3;generatie2;3;2016;VPS;20/07/2021;20/08/2021;1
+dagvlinders;Bruin dikkopje;Vlinders - Transecten;;Integraal;1;generatie1;3;2017;VPS;1/05/2021;31/05/2021;1
+dagvlinders;Bruin dikkopje;Vlinders - Transecten;;Integraal;1;generatie2;3;2017;VPS;20/07/2021;20/08/2021;1
+dagvlinders;Bruine eikenpage;Vlinders - Gebiedstelling;;Integraal;1;generatie1;3;2018;VPS;15/06/2021;15/07/2021;1
+dagvlinders;Gentiaanblauwtje;Vlinders - Eitellingen;;Integraal;1;generatie1;1;2016;VPS;1/08/2021;15/09/2021;1
+dagvlinders;Grote weerschijnvlinder;Vlinders - Gebiedstelling;;Integraal;1;generatie1;3;2018;VPS;15/06/2021;25/07/2021;1
+dagvlinders;Heivlinder;Vlinders - Transecten;;Steekproef;3;generatie1;3;2016;VPS;20/07/2021;31/08/2021;1
+dagvlinders;Klaverblauwtje;Vlinders - Transecten;;Integraal;1;generatie1;3;2017;VPS;1/05/2021;31/05/2021;1
+dagvlinders;Klaverblauwtje;Vlinders - Transecten;;Integraal;1;generatie2;3;2017;VPS;10/07/2021;10/08/2021;1
+dagvlinders;Kommavlinder;Vlinders - Transecten;;Integraal;1;generatie1;3;2016;VPS;1/08/2021;31/08/2021;1
+dagvlinders;Moerasparelmoervlinder;Vlinders - Transecten;;Integraal;1;generatie1;3;2020;EPS;1/05/2021;31/05/2021;1
+dagvlinders;Oranje zandoogje;Vlinders - Transecten;;Steekproef;3;generatie1;3;2017;VPS;10/07/2021;15/08/2021;1
+dagvlinders;Veldparelmoervlinder;Vlinders - Transecten;;Integraal;1;generatie1;3;2016;VPS;1/05/2021;31/05/2021;1
+libellen;Beekrombout;Libellen - Larvenhuidjes Beekrombout;;Integraal;1;generatie1;2;2018;VPS;1/05/2021;31/05/2021;1
+libellen;Bosbeekjuffer;Libellen - Transect;;Steekproef;3;generatie1;3;2018;VPS;20/05/2021;20/08/2021;1
+libellen;Gevlekte witsnuitlibel;Libellen - Populatietelling per locatie;;Integraal;1;generatie1;2;2016;EPS;20/05/2021;30/06/2021;1
+libellen;Hoogveenglanslibel;Libellen - Populatietelling per locatie;;Integraal;1;generatie1;2;2018;VPS;20/05/2021;31/07/2021;0
+libellen;Kempense heidelibel;Libellen - Populatietelling per locatie;;Integraal;1;generatie1;2;2016;VPS;1/08/2021;31/08/2021;1
+libellen;Maanwaterjuffer;Libellen - Populatietelling per locatie;;Integraal;1;generatie1;2;2016;VPS;20/04/2021;20/05/2021;1
+libellen;Rivierrombout;Libellen - Larvenhuidjes;;Integraal;1;generatie1;5;2016;EPS;1/06/2021;15/08/2021;1
+libellen;Sierlijke witsnuitlibel;Libellen - Populatietelling per locatie;;Integraal;1;generatie1;2;2020;EPS;20/05/2021;20/06/2021;1
+libellen;Speerwaterjuffer;Libellen - Populatietelling per locatie;;Integraal;1;generatie1;2;2017;VPS;15/05/2021;20/06/2021;1
+libellen;Variabele waterjuffer;Libellen - Transect;;Steekproef;3;generatie1;2;2017;VPS;1/05/2021;30/06/2021;1
+libellen;Vroege glazenmaker;Libellen - Transect;;Steekproef;3;generatie1;2;2017;VPS;20/05/2021;30/06/2021;1
+mollusken;Bataafse stroommossel;;;Inhaalslag;12;generatie1;1;2017;EPS;NA;NA;0
+mollusken;Nauwe korfslak;Nauwe korfslak - Inhaalslag;;Inhaalslag;12;generatie1;1;2017;EPS;NA;NA;0
+mollusken;Platte schijfhoren;;;Inhaalslag;12;generatie1;1;2017;EPS;NA;NA;0
+mollusken;Zeggekorfslak;Zeggekorfslak - Inhaalslag;;Inhaalslag;12;generatie1;1;2017;EPS;1/01/2021;30/11/2021;1
+overige;Gerande oeverspin;Gerande oeverspin - Inhaalslag;;Inhaalslag;6;generatie1;1;2016;VPS;1/05/2021;31/07/2021;1
+overige;Lentevuurspin;Lentevuurspin - Gebiedstelling;;Integraal;1;generatie1;1;2016;VPS;10/08/2021;20/09/2021;1
+overige;Lentevuurspin;Lentevuurspin - Transect;;Integraal;1;generatie1;1;2016;VPS;10/08/2021;20/09/2021;1
+overige;Roestbruine kniptor;Kevers - Feromoonval;;Inhaalslag;6;generatie1;1;2018;VPS;1/06/2021;31/08/2021;1
+overige;Schavertje;Sprinkhanen - Wegvangst;;Integraal;1;generatie1;1;2017;VPS;1/08/2021;30/09/2021;1
+overige;Vermiljoenkever;Vermiljoenkever - Larven;;Pilootproject;1;generatie1;1;2021;EPS;NA;NA;1
+overige;Vliegend hert;Vliegend hert - Inhaalslag;;Inhaalslag;6;generatie1;6;2017;EPS;NA;NA;0
+overige;Vliegend hert;Vliegend hert - Transect;;Steekproef;1;generatie1;6;2019;EPS;NA;NA;1
+overige;Zadelsprinkhaan;Sprinkhanen - Gebiedstelling;;Integraal;1;generatie1;1;2016;VPS;25/08/2021;15/09/2021;1
+planten;Bleekgeel blaasjeskruid;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;NA;NA;1
+planten;Driekantige bies;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/06/2021;30/09/2021;1
+planten;Duingentiaan;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;1/07/2021;30/09/2021;1
+planten;Fijn goudscherm;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;1/07/2021;30/09/2021;1
+planten;Gesteelde zoutmelde;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/07/2021;30/09/2021;1
+planten;Grote bremraap;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;1/05/2021;31/08/2021;1
+planten;Harlekijn;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;NA;NA;1
+planten;Honingorchis;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;1/06/2021;31/07/2021;1
+planten;Kleine schorseneer;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;1/05/2021;30/06/2021;1
+planten;Kleine wolfsklauw;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;NA;NA;1
+planten;Klimopklokje;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/06/2021;30/09/2021;1
+planten;Koprus;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;NA;NA;1
+planten;Krabbenscheer;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;NA;NA;1
+planten;Moerassmele;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/07/2021;31/08/2021;1
+planten;Plat fonteinkruid;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/07/2021;31/08/2021;1
+planten;Polei;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/07/2021;30/09/2021;1
+planten;Purperorchis;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;1/05/2021;30/06/2021;1
+planten;Ronde zegge;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/05/2021;30/06/2021;1
+planten;Slank wollegras;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/05/2021;31/07/2021;1
+planten;Spits fonteinkruid;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/06/2021;31/08/2021;1
+planten;Stekende bies;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/06/2021;31/08/2021;1
+planten;Veenmosorchis;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;NA;NA;1
+planten;Weegbreefonteinkruid;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/06/2021;31/07/2021;1
+planten;Welriekende nachtorchis;Vaatplanten - Aantal individuen;;Integraal;3;generatie1;1;2016;VPS;1/06/2021;31/07/2021;1
+planten;Witte waterranonkel;Vaatplanten - Oppervlakte;;Integraal;3;generatie1;1;2016;VPS;1/05/2021;30/06/2021;1
+reptielen;Gladde slang;Gladde slang - Telling onder platen;Telling onder platen;Pilootproject;3;generatie1;7;2021;EPS;1/04/2021;30/09/2021;1
+vleermuizen;Gewone Grootoorvleermuis;Vleermuizen - Zomertelling;;Integraal;1;generatie1;2;2021;EPS;1/06/2021;31/07/2021;1
+vleermuizen;Grijze Grootoorvleermuis;Vleermuizen - Zomertelling;;Integraal;1;generatie1;2;2021;EPS;30/05/2021;31/07/2021;1
+vleermuizen;Ingekorven Vleermuis;Vleermuizen - Zomertelling;;Integraal;1;generatie1;1;2021;EPS;15/07/2021;10/08/2021;1
+vleermuizen;Laatvlieger;Vleermuizen - Zomertelling;;Integraal;1;generatie1;2;2021;EPS;1/06/2021;2/08/2021;1
+vogels;Algemene Broedvogelmonitoring (ABV);Algemene Broedvogelmonitoring;;Steekproef;3;generatie1;3;2007;EPS;1/03/2021;16/07/2021;1
+vleermuizen;Vleermuizen - Wintertellingen;Vleermuizen - Wintertelling;;Integraal;1;generatie1;1;2021;EPS;;;1
