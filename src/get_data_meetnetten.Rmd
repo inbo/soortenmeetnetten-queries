@@ -15,28 +15,6 @@ library(inbodb)
 library(inbodb)
 library(dplyr)
 con <- connect_inbo_dbase("S0008_00_Meetnetten")
-test <- tbl(con, sql("SELECT id, name FROM staging_Meetnetten.projects_projectgroup")) %>%
-  collect()
-test$name
-# [1] "amfibieÃ«n"        "overige"           "andere zoogdieren" "dagvlinders"       "planten"           "libellen"          "vogels"           
-# [8] "mollusken"         "vleermuizen"
-write_csv2(test, "test.csv")
-
-Encoding(test$name) <- "UTF-8"
-
-test <- tbl(conn, sql("SELECT id, name FROM staging_Meetnetten.projects_projectgroup")) %>%
-  collect()
-```
-
-```{r}
-set_utf8 <- function(x) {
-  # Declare UTF-8 encoding on all character columns:
-  chr <- sapply(x, is.character)
-  x[, chr] <- lapply(x[, chr, drop = FALSE], `Encoding<-`, "UTF-8")
-  # Same on column names:
-  Encoding(names(x)) <- "UTF-8"
-  x
-}
 ```
 
 ### Bezoeken
@@ -78,9 +56,8 @@ query_bezoeken <- "SELECT
   Where 1=1
 "
 
-bezoeken_orig <- tbl(conn, sql(query_bezoeken)) %>%
-  collect() %>%
-  set_utf8()
+bezoeken_orig <- tbl(con, sql(query_bezoeken)) %>%
+  collect()
 
 bezoeken <- bezoeken_orig %>%
   mutate(jaar = as.numeric(format(datum, "%Y")),
@@ -97,6 +74,139 @@ bezoeken <- bezoeken_orig %>%
 write_vc(bezoeken, "bezoeken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "sublocatie", "visit_id"), strict = FALSE)
 ```
 
+
+### Tellers en gebruikers
+
+```{r}
+query_locatie_users <- "
+  select PG.name as soortgroep
+, P.Name as meetnet
+, l.name as locatie
+, pl.is_sample
+, pl.is_active
+, u.first_name
+, u.last_name
+, u.email
+, u.is_staff
+from staging_Meetnetten.projects_projectlocation pl
+left outer join staging_Meetnetten.Projects_project P on P.ID = pl.project_ID
+left join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+left outer join staging_Meetnetten.locations_location l on l.id = pl.location_id
+inner join staging_Meetnetten.accounts_user u on u.id = pl.user_id
+"
+locatie_users <- dbGetQuery(con, query_locatie_users)
+
+query_users <- "
+select pg.name as soortgroep
+  , p.name as meetnet
+  , u.first_name
+  , u.last_name
+  , u.email
+  , u.address as adres
+  , u.city as gemeente
+  , u.postalcode as postcode
+  , u.reference_obs
+  , pu.role
+  from staging_Meetnetten.projects_projectuser pu
+    inner join staging_Meetnetten.projects_project p on p.id = pu.project_id
+    inner join staging_Meetnetten.accounts_user u on u.id = pu.user_id
+    inner join staging_Meetnetten.projects_projectgroup pg on pg.id = p.group_id"
+
+meetnetten_users <- dbGetQuery(con, query_users)
+
+query_locatie_users_reserve <- "
+select PG.name as soortgroep
+, P.Name as meetnet
+, l.name as locatie
+, pl.is_sample
+, pl.is_active
+, u.first_name
+, u.last_name
+, u.email
+, u.is_staff
+, pb.interested
+from staging_Meetnetten.projects_projectlocation pl
+left outer join staging_Meetnetten.Projects_project P on P.ID = pl.project_ID
+left join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+left outer join staging_Meetnetten.locations_location l on l.id = pl.location_id
+left outer join staging_Meetnetten.projects_backupuser pb on pb.projectlocation_id = pl.id
+inner join staging_Meetnetten.accounts_user u on u.id = pb.user_id
+"
+locatie_users_reserve <- dbGetQuery(con, query_locatie_users_reserve)
+
+write_vc(meetnetten_users, "meetnetten_users", root = "../raw", sorting = c("meetnet", "last_name"), strict = FALSE)
+write_vc(locatie_users, "locatie_users", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
+write_vc(locatie_users_reserve, "locatie_users_reserve", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
+  
+```
+
+
+### Werkpakketten en taken
+
+```{r}
+query_werkpakket <- "
+  select P.Name as meetnet
+    , WP.Name as werkpakket
+    , WP.Start_date as wp_start
+    , WP.end_date as wp_end
+  from staging_Meetnetten.Projects_project P
+    left outer join staging_Meetnetten.Projects_workpackage WP on WP.project_ID = P.ID
+"
+werkpakketten_orig <- dbGetQuery(con, query_werkpakket)
+
+werkpakketten <- werkpakketten_orig %>%
+  mutate(doy_min = as.numeric(format(wp_start, "%j")),
+         doy_max = as.numeric(format(wp_end, "%j")),
+         doy_mid = doy_min + round((doy_max - doy_min)/2, 0),
+         jaar = as.numeric((format(wp_start, "%Y"))))
+
+query_werkpakket_locaties <- "
+  select P.Name as meetnet
+, WP.Name as werkpakket
+, l.name as locatie
+from staging_Meetnetten.projects_workpackage WP
+left outer join staging_Meetnetten.Projects_project P on P.ID = WP.project_ID
+left outer join staging_Meetnetten.projects_workpackage_locations wpl on wpl.workpackage_id = wp.id
+left outer join staging_Meetnetten.locations_location l on l.id = wpl.location_id
+"
+
+werkpakketten_locaties <- dbGetQuery(con, query_werkpakket_locaties)
+
+query_taken <- "
+  select PG.Name as soortgroep
+    , P.Name as meetnet
+    , L.name as locatie
+    , WP.Name as werkpakket
+    , T.name as taak
+    , T.id as task_id
+    , PR.name as protocol
+    , T.start_date as taak_start
+    , T.end_date as taak_end
+
+from staging_Meetnetten.Projects_project P
+    INNER JOIN staging_Meetnetten.projects_projectgroup PG on PG.ID = P.group_ID
+    left outer join staging_Meetnetten.projects_projectlocation PL on PL.project_id = P.ID
+    LEFT OUTER join staging_Meetnetten.Locations_location L ON L.ID = PL.location_ID
+    left OUTER join staging_Meetnetten.Projects_workpackage WP on WP.project_ID = P.ID
+    LEFT OUTER join staging_Meetnetten.Projects_task T on T.wp_ID = WP.ID and T.location_ID = L.ID
+    left Outer JOIN staging_Meetnetten.protocols_protocol PR on PR.id = T.protocol_id
+
+Order by PG.name
+    , P.name
+    , L.name
+    , T.start_date
+    , T.name"
+
+taken <- dbGetQuery(con, query_taken)
+taken <- taken %>%
+  filter(!is.na(taak)) %>%
+  mutate(jaar= as.numeric((format(taak_start, "%Y"))))
+
+write_vc(werkpakketten, "werkpakketten", root = "../raw", sorting = c("meetnet", "werkpakket"), strict = FALSE)
+write_vc(werkpakketten_locaties, "werkpakketten_locaties", root = "../raw", sorting = c("meetnet", "werkpakket", "locatie"), strict = FALSE)
+write_vc(taken, "taken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "werkpakket"), strict = FALSE)
+```
+
 ### Locaties
 
 ```{r}
@@ -110,7 +220,7 @@ query_selectLocations <- "SELECT
     PL.is_active,
     PL.user_id,
     U.first_name,
-    U.last_name,,
+    U.last_name,
     L.geom.STAsText() as geom_text
     FROM staging_Meetnetten.locations_location L
     INNER JOIN staging_Meetnetten.projects_projectlocation PL ON PL.location_id = L.id
@@ -119,7 +229,7 @@ query_selectLocations <- "SELECT
     LEFT JOIN staging_Meetnetten.accounts_user U on U.ID = PL.user_id
 and P.name <> 'Algemene Vlindermonitoring'"
 
-locaties <- set_utf8(dbGetQuery(conn = con, statement = query_selectLocations))
+locaties <- dbGetQuery(conn = con, statement = query_selectLocations)
 
 locaties_sf <- locaties %>%
   mutate(locatie_type = ifelse(is.na(parent_id),  "locatie", "sublocatie"),
