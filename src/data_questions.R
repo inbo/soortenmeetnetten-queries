@@ -717,6 +717,15 @@ locaties_libellen %>%
   st_transform(31370) %>%
   st_write("output/meetnetlocaties_libellen", "meetnetlocaties_libellen", driver = "ESRI Shapefile")
 
+locaties_bosbeek <- get_locations_smp(species_group = "libellen") %>%
+  filter(meetnet == "Bosbeekjuffer") %>%
+  arrange(meetnet, locatie) %>%
+  select(meetnet, locatie)
+
+locaties_bosbeek %>%
+  st_transform(31370) %>%
+  st_write("output/meetnetlocaties_bosbeekjuffer", "meetnetlocaties_bosbeekjuffer", driver = "ESRI Shapefile")
+
 ##################################################
 
 kempense_heidelibel <- get_counts_smp() %>%
@@ -774,4 +783,71 @@ totaal <- n_distinct(overzicht_limburg$meetnet) + nt_in_meetnetten_tot
 totaal_limburg <- sum(!is.na(overzicht_limburg$deels_in_limburg)) + nt_in_meetnetten_limburg
 
 totaal_limburg_volledig <- sum(!is.na(overzicht_limburg$volledig_in_limburg)) + 1 
+
+#################################
+
+year_planning <- 2024
+year_evaluation <- c(2022, 2023)
+meetnet_planning <- "Algemene Broedvogelmonitoring (ABV)"
+
+locaties_regio <- get_locations_smp() %>%
+  filter(meetnet == meetnet_planning) %>%
+  filter(locatie_type == "locatie") %>%
+  st_drop_geometry() %>%
+  distinct(meetnet, locatie, regio)
+
+locatie_users <- read_vc("raw/locatie_users") %>%
+  filter(meetnet == meetnet_planning) %>%
+  mutate(naam = str_c(first_name, last_name, sep = " "),
+         type_teller = "hoofdteller") %>%
+  select(meetnet, locatie, type_teller, naam, email)
+
+locatie_users_reserve <- read_vc("raw/locatie_users_reserve") %>%
+  filter(meetnet == meetnet_planning) %>%
+  mutate(naam = str_c(first_name, last_name, sep = " "),
+         type_teller = "reserveteller") %>%
+  select(meetnet, locatie, type_teller, naam, email)
+
+users <- read_vc("raw/meetnetten_users") %>%
+  mutate(naam = str_c(first_name, last_name, sep = " ")) %>%
+  select(naam, adres, gemeente, postcode) %>%
+  unique()
+
+locatie_users_all <- locatie_users %>%
+  bind_rows(locatie_users_reserve) %>%
+  left_join(users, by = "naam")
+
+werkpakketten_locaties <- read_vc("raw/werkpakketten_locaties")
+
+bezoeken_evaluatie <- read_vc("raw/bezoeken") %>%
+  filter(meetnet == meetnet_planning) %>%
+  filter(jaar %in% year_evaluation) %>%
+  filter(jaardoel) %>%
+  group_by(meetnet, locatie, jaar) %>%
+  summarise(n_bezoeken = n_distinct(visit_id)) %>%
+  ungroup() %>%
+  mutate(voldoende_geteld = n_bezoeken >= 3) %>%
+  group_by(meetnet, locatie) %>%
+  summarise(voldoende_geteld = any(voldoende_geteld),
+            n_bezoeken = max(n_bezoeken),
+            jaar_geteld = str_c(jaar, collapse = ";")) %>%
+  ungroup()
+
+werkpakket_planning <- werkpakketten_locaties %>%
+  filter(meetnet == meetnet_planning) %>%
+  filter(str_detect(werkpakket, "2022|2023|2024")) %>%
+  group_by(meetnet, locatie) %>%
+  summarise(werkpakket = str_c(werkpakket, collapse = "; ")) %>%
+  ungroup() %>%
+  left_join(bezoeken_evaluatie, by = c("meetnet", "locatie")) %>%
+  mutate(voldoende_geteld = ifelse(is.na(voldoende_geteld), FALSE, voldoende_geteld),
+         n_bezoeken = ifelse(is.na(n_bezoeken), 0, n_bezoeken)) %>%
+  filter(!voldoende_geteld) %>%
+  left_join(locatie_users_all, by = c("meetnet", "locatie")) %>%
+  left_join(locaties_regio, by = c("meetnet", "locatie")) %>%
+  select(meetnet, regio, everything()) %>%
+  arrange(regio, locatie) %>%
+  filter(!is.na(naam))
+
+write_csv2(werkpakket_planning, "output/abv_locaties_tellers_2024.csv", na = "")
 
