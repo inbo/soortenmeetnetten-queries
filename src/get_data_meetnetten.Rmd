@@ -219,6 +219,8 @@ query_selectLocations <- "SELECT
     PL.is_sample,
     PL.is_active,
     PL.user_id,
+    PL.projectregion_id,
+    L2.name as regio,
     U.first_name,
     U.last_name,
     L.geom.STAsText() as geom_text
@@ -227,17 +229,19 @@ query_selectLocations <- "SELECT
     INNER JOIN staging_Meetnetten.projects_project P ON P.id = PL.project_id
     INNER JOIN staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
     LEFT JOIN staging_Meetnetten.accounts_user U on U.ID = PL.user_id
+    LEFT JOIN staging_Meetnetten.projects_projectregion R on R.id = PL.projectregion_id
+    LEFT JOIN staging_Meetnetten.locations_location L2 on L2.id = R.location_id
 and P.name <> 'Algemene Vlindermonitoring'"
 
 locaties <- dbGetQuery(conn = con, statement = query_selectLocations)
 
 locaties_sf <- locaties %>%
-  mutate(locatie_type = ifelse(is.na(parent_id),  "locatie", "sublocatie"),
+  mutate(locatie_type = ifelse(parent_id == -1,  "locatie", "sublocatie"),
          meetnet_type = ifelse(meetnet %in% c("Otter", "Gerande oeverspin", "Vliegend hert", "Roestbruine kniptor") | soortgroep == "mollusken", "inhaalslag", "meetnet"),
          type = ifelse(meetnet_type == "meetnet",
                        ifelse(is_sample == 1, "meetnetlocatie", "optionele locatie"),
                        ifelse(meetnet_type == "inhaalslag", "locatie inhaalslag", NA))) %>%
-  select(soortgroep, meetnet, locatie, is_active, is_sample, locatie_type, everything()) %>%
+  select(soortgroep, meetnet, locatie, regio, is_active, is_sample, locatie_type, everything()) %>%
   mutate(geom = geom_text) %>%
   st_as_sf(wkt = "geom", crs = 4326)
 
@@ -247,18 +251,21 @@ locaties_hoofdlocatie <- locaties_sf %>%
 
 namen_hoofdlocaties <- locaties_hoofdlocatie %>%
   st_drop_geometry() %>%
-  mutate(geclaimd = ifelse(is.na(user_id), "nee", "ja")) %>%
+  mutate(geclaimd = ifelse(is.na(user_id), "nee", "ja"),
+         geclaimd_door = str_c(first_name, last_name, sep = " ")) %>%
   select(meetnet, locatie, locatie_id = id,  geclaimd, geclaimd_door)
 
 sublocations_transecten <- locaties_sf %>%
   filter(locatie_type == "sublocatie") %>%
-  select(-geclaimd_door) %>%
   arrange(soortgroep, meetnet, locatie) %>%
   mutate(sectie_lijn = (substr(geom_text, 1, 4) == "LINE") | (substr(geom_text, 1, 9) == "MULTILINE")) %>%
   rename(sublocatie = locatie, locatie_id = parent_id) %>%
   left_join(namen_hoofdlocaties, by = c("meetnet", "locatie_id")) %>%
   arrange(soortgroep, meetnet, locatie, sublocatie) %>%
   filter(!is.na(locatie))
+
+st_write(locaties_sf, "../raw/meetnetten_locaties.gpkg", layer = "locaties", driver = "GPKG", delete_layer = TRUE)
+st_write(sublocations_transecten, "../raw/meetnetten_locaties.gpkg", layer = "transecten", driver = "GPKG", delete_layer = TRUE)
 ```
 
 
