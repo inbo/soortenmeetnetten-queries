@@ -12,8 +12,6 @@ library(inbodb)
 ```
 
 ```{r}
-library(inbodb)
-library(dplyr)
 con <- connect_inbo_dbase("S0008_00_Meetnetten")
 ```
 
@@ -43,6 +41,8 @@ query_bezoeken <- "SELECT
        when V.status = -4 then 'Geen veldwerk mogelijk - locatie ongeschikt'
        else Null
   end as bezoek_status, 
+  U.first_name, 
+  U.last_name,
   V.year_target as jaardoel, 
   V.analysis as voor_analyse,
   V.notes as opmerking
@@ -53,6 +53,7 @@ query_bezoeken <- "SELECT
     left outer Join staging_Meetnetten.Locations_location L1 on L1.ID = L.parent_ID
     inner join staging_Meetnetten.Protocols_protocol PR on PR.id = V.protocol_ID
     left outer join staging_Meetnetten.projects_task T on T.ID = V.task_id
+    inner join staging_Meetnetten.accounts_user U on U.ID = V.user_id
   Where 1=1
 "
 
@@ -63,8 +64,9 @@ bezoeken <- bezoeken_orig %>%
   mutate(jaar = as.numeric(format(datum, "%Y")),
          doy = as.numeric(format(datum, "%j")),
          sublocatie = ifelse(is.na(hoofdlocatie), NA, locatie),
-         locatie = ifelse(is.na(hoofdlocatie), locatie, hoofdlocatie)) %>%
-  select(-hoofdlocatie) %>%
+         locatie = ifelse(is.na(hoofdlocatie), locatie, hoofdlocatie),
+         hoofdteller = str_c(first_name, " ", last_name)) %>%
+  select(-hoofdlocatie, -first_name, -last_name) %>%
   group_by(meetnet, protocol, locatie, jaar, visit_id) %>%
   mutate(i_bezoek = rank(doy)) %>%
   ungroup() %>%
@@ -73,7 +75,6 @@ bezoeken <- bezoeken_orig %>%
 
 write_vc(bezoeken, "bezoeken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "sublocatie", "visit_id"), strict = FALSE)
 ```
-
 
 ### Tellers en gebruikers
 
@@ -276,38 +277,38 @@ query_aantallen <- "select PG.name as soortgroep
     , P.name as meetnet
     , L.name as locatie
     , L1.name as sublocatie
-    , PR.i18n->>'name_nl' as protocol
+    , PR.name as protocol
     , V.id as visit_id
     , V.start_date as datum
     , SA.Not_Counted as niet_geteld
     , SA.is_complete as checklist
     , SA.Notes as opmerkingen
     , O.species_ID
-    , SP.i18n->>'name_nl' as soort_nl
+    , SP.name as soort_nl
     , SP.scientific_name as soort_wet
     , PS.is_primary as primaire_soort
     , O.sample_id
     , O.sex as geslacht
     , O.id as observation_id
-    , ACT.i18n->>'name_nl' as activiteit
-    , LS.i18n->>'name_nl' as levensstadium
+    , ACT.name as activiteit
+    , LS.name as levensstadium
     , O.number_min as aantal
     , PSC.name as type_aantal
-    , st_astext(O.geom) as geom_text
- from Projects_project P
-    inner join projects_projectgroup PG on PG.id = P.group_id
-    inner join fieldwork_visit V on V.project_ID = P.ID
-    left Outer join protocols_protocol PR on PR.id = V.protocol_id
-    left outer join fieldwork_sample SA on SA.visit_ID = V.ID
-    left outer join fieldwork_observation O on O.sample_ID = SA.ID
-    left outer join protocols_scale PSC on O.scale_ID = PSC.ID
-    left outer join Species_species SP on SP.ID = O.species_id
-    left outer join species_activity ACT on ACT.id = O.activity_id
-    left outer join species_lifestage LS on LS.id = O.life_stage_id
-    left outer join Locations_location L ON L.ID = V.location_ID
-    left outer Join Locations_location L1 on L1.ID = SA.location_id
-    left outer join accounts_user U on U.ID = V.user_id
-    left outer join projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+    , L.geom.STAsText() as geom_text
+ from staging_Meetnetten.Projects_project P
+    inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+    inner join staging_Meetnetten.fieldwork_visit V on V.project_ID = P.ID
+    left Outer join staging_Meetnetten.protocols_protocol PR on PR.id = V.protocol_id
+    left outer join staging_Meetnetten.fieldwork_sample SA on SA.visit_ID = V.ID
+    left outer join staging_Meetnetten.fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join staging_Meetnetten.protocols_scale PSC on O.scale_ID = PSC.ID
+    left outer join staging_Meetnetten.Species_species SP on SP.ID = O.species_id
+    left outer join staging_Meetnetten.species_activity ACT on ACT.id = O.activity_id
+    left outer join staging_Meetnetten.species_lifestage LS on LS.id = O.life_stage_id
+    left outer join staging_Meetnetten.Locations_location L ON L.ID = V.location_ID
+    left outer Join staging_Meetnetten.Locations_location L1 on L1.ID = SA.location_id
+    left outer join staging_Meetnetten.accounts_user U on U.ID = V.user_id
+    left outer join staging_Meetnetten.projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
 where 1=1
     and P.name <> 'Algemene Broedvogelmonitoring (ABV)'
     and P.name <> 'Algemene Vlindermonitoring'
@@ -321,7 +322,7 @@ Order by PG.name
     , V.start_date
     , L1.Name"
 
-aantallen_orig <- set_utf8(dbGetQuery(con, query_aantallen)) 
+aantallen_orig <- dbGetQuery(con, query_aantallen)
 
 #aantallen_orig <- st_read(dsn = con, query = query_aantallen) 
 
