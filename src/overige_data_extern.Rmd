@@ -401,28 +401,63 @@ data_mollusken_locaties <- data_mollusken_by_meetnet %>%
 
 ```{r}
 
-data_roestbruine_kniptor_2020 <- read.csv2("../data_extern/count_data/roestbruine_kniptor/RoestbrKniptor_wbe_2020.csv", stringsAsFactors = FALSE) %>%
+data_roestbruine_kniptor_2020 <- read_csv2("G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2020/Kevers/RoestbrKniptor_wbe_2020.csv") %>%
   filter(lon != "onbekend") %>%
-  select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, opmerking = bijzonderheden, uren_gevangen) %>%
+  select(id, methode, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, opmerking = bijzonderheden, uren_gevangen) %>%
   mutate(id = as.character(id),
          datum = as.Date(datum, format = "%d/%m/%Y"))
 
-data_roestbruine_kniptor_2019 <- read_sf("../data_extern/count_data/roestbruine_kniptor", "Roestbruine_kniptor_waarnemingen_2019") %>%
-    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, opmerking = bijzonderh) %>%
+data_roestbruine_kniptor_2019 <- read_sf("G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2019/Kevers/opleveringdataroestbruinekniptor/Roestbruine_kniptor_waarnemingen_2019.shp") %>%
+    select(id, methode, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, opmerking = bijzonderh) %>%
     mutate(id = as.character(id),
          datum = as.Date(datum, format = "%Y-%m-%d")) %>%
   st_drop_geometry()
 
-data_roestbruine_kniptor_2018 <- read_sf("../data_extern/count_data/roestbruine_kniptor", "Roestbruine kniptor waarnemingen export 2018-12") %>%
-    select(id, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, opmerking = bijzonderh) %>%
+data_roestbruine_kniptor_2018 <- read_sf("G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2018/Kevers/Roestbruine kniptor/Roestbruine kniptor waarnemingen export 2018-12.shp") %>%
+    select(id, methode, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, waarnemer = wnr, opmerking = bijzonderh) %>%
     mutate(id = as.character(id),
-         datum = as.Date(datum, format = "%Y-%m-%d")) %>%
+         datum = as.Date(datum, format = "%Y-%m-%d"),
+         opmerking = ifelse(id == "159682957", "16h - 17h volgende dag (25h)",
+                            ifelse(id == "159337240", "18-18h (24h)", opmerking))) %>%
   st_drop_geometry()
+
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2021/Data niet in Meetnetten.be/Roestbruine kniptor - Oplevering data Meetnetten 2021"
+
+data_roestbruine_kniptor_2021 <- read_csv2(file.path(data_path, "RoestbruineKniptor_wbe_2021_uren_gevangen.csv")) %>%
+  filter(lon != "onbekend") %>%
+  select(id, methode, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, uren_gevangen, opmerking = bijzonderheden) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d/%m/%Y")) %>%
+  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld")) %>%
+  filter(!is.na(x))
+
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2022/Data niet in Meetnetten.be/Roestbruine kniptor - Oplevering data Meetnetten 2022"
+
+data_roestbruine_kniptor_2022 <- read_csv2(file.path(data_path, "RoestbruineKniptor_wbe_2022.csv")) %>%
+  filter(lon != "onbekend") %>%
+  select(id, methode, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, opmerking = bijzonderheden) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d/%m/%Y")) %>%
+  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld")) %>%
+  filter(!is.na(x))
+
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2023/Data niet in Meetnetten.be/Roestbruine kniptor - Oplevering data Meetnetten 2023"
+
+data_roestbruine_kniptor_2023 <- read_csv2(file.path(data_path, "RoestbruineKniptor_wbe_2023.csv")) %>%
+  filter(lon != "onbekend") %>%
+  select(id, methode, naam_nl, naam_lat, datum, gebied, status, x, y, aantal, gedrag, kleed, opmerking = bijzonderheden) %>%
+  mutate(id = as.character(id),
+         datum = as.Date(datum, format = "%d/%m/%Y")) %>%
+  mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld")) %>%
+  filter(!is.na(x))
 
 
 data_roestbruine_kniptor <- bind_rows(data_roestbruine_kniptor_2018,
                            data_roestbruine_kniptor_2019,
-                           data_roestbruine_kniptor_2020) %>%
+                           data_roestbruine_kniptor_2020,
+                           data_roestbruine_kniptor_2021,
+                           data_roestbruine_kniptor_2022,
+                           data_roestbruine_kniptor_2023) %>%
   mutate(validatie = ifelse(str_detect(status, "Goedgekeurd"), "goedgekeurd", "niet beoordeeld")) %>%
   filter(!is.na(x))
 
@@ -449,6 +484,8 @@ data_roestbruine_kniptor <- data_roestbruine_kniptor_sf %>%
   mutate(jaar = as.numeric(format(datum, "%Y")),
          meetnet = "Roestbruine kniptor") %>% 
   select(meetnet, jaar, locatie, locatie_actief = is_active, gebied, datum, id, everything())
+
+write_csv2(data_roestbruine_kniptor, "../processed/data_extern_roestbruine_kniptor.csv")
   
 ```
 
