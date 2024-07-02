@@ -56,7 +56,6 @@ query_bezoeken <- "SELECT
     inner join staging_Meetnetten.accounts_user U on U.ID = V.user_id
   Where 1=1
 "
-
 bezoeken_orig <- tbl(con, sql(query_bezoeken)) %>%
   collect()
 
@@ -74,6 +73,20 @@ bezoeken <- bezoeken_orig %>%
   mutate(opmerking = str_replace_all(opmerking, "[\r\n]" , " "))
 
 write_vc(bezoeken, "bezoeken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "sublocatie", "visit_id"), strict = FALSE)
+
+query_medetellers <- " SELECT
+    v.visit_id as visit_id,
+    U.first_name, 
+    U.last_name
+    FROM staging_Meetnetten.fieldwork_visit_co_observers v
+    inner join staging_Meetnetten.accounts_user U on U.ID = V.user_id
+    Where 1=1
+"
+
+medetellers <- tbl(con, sql(query_medetellers)) %>%
+  collect()
+
+write_vc(medetellers, "medetellers", root = "../raw", sorting = c("visit_id", "first_name","last_name"), strict = FALSE)
 ```
 
 ### Tellers en gebruikers
@@ -294,7 +307,7 @@ query_aantallen <- "select PG.name as soortgroep
     , LS.name as levensstadium
     , O.number_min as aantal
     , PSC.name as type_aantal
-    , L.geom.STAsText() as geom_text
+    , O.geom.STAsText() as geom_text
  from staging_Meetnetten.Projects_project P
     inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
     inner join staging_Meetnetten.fieldwork_visit V on V.project_ID = P.ID
@@ -324,8 +337,6 @@ Order by PG.name
 
 aantallen_orig <- dbGetQuery(con, query_aantallen)
 
-#aantallen_orig <- st_read(dsn = con, query = query_aantallen) 
-
 aantallen_punt <- aantallen_orig %>%
   filter(str_detect(geom_text, "POINT")) %>%
   mutate(geom = geom_text) %>%
@@ -336,12 +347,11 @@ aantallen_punt <- aantallen_punt  %>%
   mutate(x = st_coordinates(aantallen_punt)[, 1],
          y = st_coordinates(aantallen_punt)[, 2]) %>%
   st_drop_geometry() %>%
-  set_utf8() %>%
   select(-geom)
 
 aantallen_overig <- aantallen_orig %>%
-  filter(!str_detect(geom_text, "POINT") | is.na(geom_text)) %>% 
-  set_utf8()
+  filter(!str_detect(geom_text, "POINT") | is.na(geom_text)) %>%
+  select(-geom_text)
 
 aantallen_orig <- bind_rows(aantallen_punt,
                              aantallen_overig)
@@ -352,45 +362,47 @@ aantallen <- aantallen_orig %>%
   mutate(levensstadium = ifelse(levensstadium == "adult" & soortgroep == "libellen", "imago", levensstadium)) %>%
   select(soortgroep, meetnet, protocol, locatie, jaar, datum, doy, everything())
 
+write_vc(aantallen, "aantallen", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id"), strict = FALSE)
+
 query_aantallen_planten <- "select O.id
     , PG.name as soortgroep
     , P.name as meetnet
     , L.name as locatie
-    , PR.i18n->>'name_nl' as protocol
+    , PR.name as protocol
     , V.id as visit_id
     , V.start_date as datum
     , v.validation_status as validatie
-    , st_astext(v.track_geom) as track_geom_text
+    , v.track_geom.STAsText() as track_geom_text
     , SA.Not_Counted as niet_geteld
     , SA.Notes as opm
-    , O.species_ID
-    , SP.i18n->>'name_nl' as soort_nl
+    , O.species_id
+    , SP.name as soort_nl
     , SP.scientific_name as soort_wet
     , PS.is_primary as primaire_soort
     , O.sample_id
-    , st_astext(O.geom) as geom_text
-    , S.i18n->>'name_nl' as schaal
+    , O.geom.STAsText() as geom_text
+    , S.name as schaal
     , SC.code
     , O.number_min as aantal_min
     , O.number_max as aantal_max
     , SC.description as beschrijving_floroncode
     , u.first_name
     , u.last_name
- from Projects_project P
-    inner join projects_projectgroup PG on PG.id = P.group_id
-    inner join fieldwork_visit V on V.project_ID = P.ID
-    inner join protocols_protocol PR on PR.id = V.protocol_id
-    inner join fieldwork_sample SA on SA.visit_ID = V.ID
-    inner join fieldwork_observation O on O.sample_ID = SA.ID
-    inner join Species_species SP on SP.ID = O.species_id
-    inner join species_activity ACT on ACT.id = O.activity_id
-    inner join species_lifestage LS on LS.id = O.life_stage_id
-    inner join protocols_scalecode SC on SC.id = O.scale_code_id
-    inner join protocols_scale S on S.id = O.scale_id
-    inner join Locations_location L ON L.ID = V.location_ID
-    inner Join Locations_location L1 on L1.ID = SA.location_id
-    inner join accounts_user U on U.ID = V.user_id
-    inner join projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+ from staging_Meetnetten.Projects_project P
+    inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+    inner join staging_Meetnetten.fieldwork_visit V on V.project_ID = P.ID
+    inner join staging_Meetnetten.protocols_protocol PR on PR.id = V.protocol_id
+    inner join staging_Meetnetten.fieldwork_sample SA on SA.visit_ID = V.ID
+    inner join staging_Meetnetten.fieldwork_observation O on O.sample_ID = SA.ID
+    inner join staging_Meetnetten.Species_species SP on SP.ID = O.species_id
+    inner join staging_Meetnetten.species_activity ACT on ACT.id = O.activity_id
+    inner join staging_Meetnetten.species_lifestage LS on LS.id = O.life_stage_id
+    inner join staging_Meetnetten.protocols_scalecode SC on SC.id = O.scale_code_id
+    inner join staging_Meetnetten.protocols_scale S on S.id = O.scale_id
+    inner join staging_Meetnetten.Locations_location L ON L.ID = V.location_ID
+    inner Join staging_Meetnetten.Locations_location L1 on L1.ID = SA.location_id
+    inner join staging_Meetnetten.accounts_user U on U.ID = V.user_id
+    inner join staging_Meetnetten.projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
 where 1=1
     and PG.name = 'planten'
 Order by PG.name
@@ -399,8 +411,7 @@ Order by PG.name
     , V.start_date
     , L1.Name"
 
-aantallen_planten <- set_utf8(dbGetQuery(con, query_aantallen_planten)) %>%
-  set_utf8() %>%
+aantallen_planten <- dbGetQuery(con, query_aantallen_planten) %>%
   mutate(puntlocatie = ifelse(is.na(geom_text), 0, 1),
          track = ifelse(is.na(track_geom_text), 0, 1))
 
@@ -412,57 +423,106 @@ aantallen_planten_puntlocaties <- aantallen_planten %>%
   
 aantallen_planten <- aantallen_planten %>%
   select(-geom_text, -track_geom_text)
+
+st_write(aantallen_planten_puntlocaties,  "../raw/planten_puntlocaties", layer = "planten_puntlocaties", driver = "ESRI Shapefile", delete_layer = TRUE)
+st_write(aantallen_planten_puntlocaties, "../raw/planten_puntlocaties.gpkg", layer = "planten_puntlocaties", driver = "GPKG", delete_layer = TRUE)
+write_vc(aantallen_planten, "aantallen_planten", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id"), strict = FALSE)
 ```
-
-
-
-
-
-
-
-
-
-
-
 
 
 ```{r}
+query_aantallen_abv <- "select PG.name as soortgroep
+    , P.name as meetnet
+    , L.name as locatie
+    , L1.name as sublocatie
+    , PR.name as protocol
+    , V.id as visit_id
+    , V.start_date as datum
+    , SA.Not_Counted as niet_geteld
+    , SA.is_complete as checklist
+    , SA.Notes as opmerkingen
+    , O.species_id
+    , SP.name as soort_nl
+    , SP.scientific_name as soort_wet
+    , PS.is_primary as primaire_soort
+    , O.sample_id
+    , O.id as observation_id
+    , O.number_min as aantal
+ from staging_Meetnetten.Projects_project P
+    inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+    inner join staging_Meetnetten.fieldwork_visit V on V.project_ID = P.ID
+    left Outer join staging_Meetnetten.protocols_protocol PR on PR.id = V.protocol_id
+    left outer join staging_Meetnetten.fieldwork_sample SA on SA.visit_ID = V.ID
+    left outer join staging_Meetnetten.fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join staging_Meetnetten.Species_species SP on SP.ID = O.species_id
+    left outer join staging_Meetnetten.species_activity ACT on ACT.id = O.activity_id
+    left outer join staging_Meetnetten.species_lifestage LS on LS.id = O.life_stage_id
+    left outer join staging_Meetnetten.Locations_location L ON L.ID = V.location_ID
+    left outer Join staging_Meetnetten.Locations_location L1 on L1.ID = SA.location_id
+    left outer join staging_Meetnetten.accounts_user U on U.ID = V.user_id
+    left outer join staging_Meetnetten.projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+where 1=1
+    and P.name = 'Algemene Broedvogelmonitoring (ABV)'
+    and V.validation_status <> -1 --afgekeurd
+Order by PG.name
+    , P.name
+    , L.Name
+    , V.start_date
+    , L1.Name"
 
-query_wvl <- "SELECT        
-	staging_Meetnetten.fieldwork_visit.project_id
-	, dbo.DimSpecies.SpeciesName
-	, staging_Meetnetten.fieldwork_visit.id
-	, staging_Meetnetten.locations_location.name
-	, staging_Meetnetten.fieldwork_sample.start_date
-	, staging_Meetnetten.fieldwork_sample.end_date
-	, staging_Meetnetten.fieldwork_sample.start_time
-	, staging_Meetnetten.fieldwork_visit.user_id
-	, staging_Meetnetten.fieldwork_visit.validation_status
-	, staging_Meetnetten.protocols_scalecode.code
-	, fo.number_min
-	, fo.number_max
-	, fo.geom
-	, fo.geom.STAsText() as wkt
-	, fo.geom.STX as X
-	, fo.geom.STY as Y
-FROM            staging_Meetnetten.fieldwork_observation fo INNER JOIN
-                         staging_Meetnetten.fieldwork_sample ON fo.sample_id = staging_Meetnetten.fieldwork_sample.id 
-						 INNER JOIN
-                         staging_Meetnetten.fieldwork_visit ON staging_Meetnetten.fieldwork_sample.visit_id = staging_Meetnetten.fieldwork_visit.id 
-						 INNER JOIN
-                         staging_Meetnetten.protocols_scalecode ON fo.scale_code_id = staging_Meetnetten.protocols_scalecode.id 
-						 INNER JOIN
-                         staging_Meetnetten.locations_location ON staging_Meetnetten.fieldwork_visit.location_id = staging_Meetnetten.locations_location.id 
-						 INNER JOIN
-                         dbo.DimSpecies ON fo.species_id = dbo.DimSpecies.SpeciesID
-WHERE        (staging_Meetnetten.fieldwork_visit.validation_status <> - 1)  
-			AND (dbo.DimSpecies.SpeciesGroupID = 7) 
-			AND (staging_Meetnetten.protocols_scalecode.code <> N'0')      
-			--AND (dbo.DimSpecies.SpeciesName = N'Krabbenscheer')	
-ORDER BY dbo.DimSpecies.SpeciesName
-			,staging_Meetnetten.locations_location.name
-			,staging_Meetnetten.fieldwork_sample.start_date"
+aantallen_abv <- dbGetQuery(con, query_aantallen_abv)
 
-test <- dbGetQuery(con, query_wvl)
+write_vc(aantallen_abv, "aantallen_abv", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id", "soort_nl"), strict = FALSE)
+
+query_aantallen_wintertellingen <- "select PG.name as soortgroep
+    , P.name as meetnet
+    , L.name as locatie
+    , L1.name as sublocatie
+    , PR.name as protocol
+    , V.id as visit_id
+    , V.start_date as datum
+    , SA.Not_Counted as niet_geteld
+    , SA.is_complete as checklist
+    , SA.Notes as opmerkingen
+    , O.species_id
+    , SP.name as soort_nl
+    , SP.scientific_name as soort_wet
+    , PS.is_primary as primaire_soort
+    , O.sample_id
+    , O.id as observation_id
+    , O.number_min as aantal
+ from staging_Meetnetten.Projects_project P
+    inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+    inner join staging_Meetnetten.fieldwork_visit V on V.project_ID = P.ID
+    left Outer join staging_Meetnetten.protocols_protocol PR on PR.id = V.protocol_id
+    left outer join staging_Meetnetten.fieldwork_sample SA on SA.visit_ID = V.ID
+    left outer join staging_Meetnetten.fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join staging_Meetnetten.Species_species SP on SP.ID = O.species_id
+    left outer join staging_Meetnetten.species_activity ACT on ACT.id = O.activity_id
+    left outer join staging_Meetnetten.species_lifestage LS on LS.id = O.life_stage_id
+    left outer join staging_Meetnetten.Locations_location L ON L.ID = V.location_ID
+    left outer Join staging_Meetnetten.Locations_location L1 on L1.ID = SA.location_id
+    left outer join staging_Meetnetten.accounts_user U on U.ID = V.user_id
+    left outer join staging_Meetnetten.projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+where 1=1
+    and P.name = 'Vleermuizen - Wintertellingen'
+    and V.validation_status <> -1 --afgekeurd
+Order by PG.name
+    , P.name
+    , L.Name
+    , V.start_date
+    , L1.Name"
+
+aantallen_wintertellingen <- dbGetQuery(con, query_aantallen_wintertellingen)
+
+write_vc(aantallen_wintertellingen, "aantallen_wintertellingen", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id", "soort_nl"), strict = FALSE)
 ```
+
+
+
+
+
+
+
+
 
