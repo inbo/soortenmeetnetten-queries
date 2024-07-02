@@ -5,11 +5,13 @@ library(lubridate)
 library(n2khab)
 library(leaflet)
 library(readxl)
+library(units)
+library(lwgeom)
 
 # remotes::install_github("inbo/n2khab",
 #                         build_vignettes = TRUE,
 #                         upgrade = TRUE)
-source("../soortenmeetnetten-analysis/src/functions_smp.r")
+source("../soortenmeetnetten-analysis/source/functions_smp.r")
 
 ######################################################################
 
@@ -168,6 +170,7 @@ write_csv2(locaties_md_vleermuizen, "processed/tellers_militaire_domeinen/teller
 locatie_users <- read_vc("raw/locatie_users")
 locatie_users_reserve_orig <- read_vc("raw/locatie_users_reserve")
 users <- read_vc("raw/meetnetten_users")
+medetellers <- read_vc("raw/medetellers")
 
 locatie_users_gereserveerd <- locatie_users %>%
   filter(is_active) %>%
@@ -191,15 +194,44 @@ locatie_users_reserve <- locatie_users_reserve_orig %>%
 users_distinct <- users %>%
   distinct(first_name, last_name, adres, postcode, gemeente, email)
 
-
 locatie_users_all <- locatie_users_gereserveerd %>%
   bind_rows(locatie_users_reserve) %>%
   spread(key = type, value = locaties) %>%
   left_join(users_distinct, by = c("first_name", "last_name", "email")) %>%
   select(Voornaam = first_name, Achternaam = last_name, Adres = adres, Postcode = postcode, Gemeente = gemeente, "Locatie gereserveerd" = gereserveerd, "Locatie reserve" = reserve, Email = email)
 
-write.csv2(locatie_users_all, "processed/overzicht_tellers_versie2021-03-31.csv", row.names = FALSE, na = "")     
+write.csv2(locatie_users_all, "processed/overzicht_tellers_versie2024-03-29.csv", row.names = FALSE, na = "")
 
+bezoeken_per_hoofdteller <- read_vc(file = "bezoeken", root = "raw") %>%
+  mutate(teller = hoofdteller,
+         teller_type = "hoofdteller") %>%
+  group_by(meetnet, teller, teller_type) %>%
+  summarise(n_tellingen_meetnet = n_distinct(visit_id),
+            jaar_min_telling = min(jaar),
+            jaar_max_telling = max(jaar)) %>%
+  ungroup()
+
+bezoeken_per_medeteller <- read_vc(file = "bezoeken", root = "raw") %>%
+  select(-hoofdteller) %>%
+  left_join(medetellers, by = "visit_id") %>%
+  mutate(teller = str_c(first_name, " ", last_name),
+         teller_type = "medeteller") %>%
+  filter(!is.na(teller)) %>%
+  group_by(meetnet, teller, teller_type) %>%
+  summarise(n_tellingen_meetnet = n_distinct(visit_id),
+            jaar_min_telling = min(jaar),
+            jaar_max_telling = max(jaar)) %>%
+  ungroup()
+
+bezoeken_per_teller <- bezoeken_per_hoofdteller %>%
+  bind_rows(bezoeken_per_medeteller)
+
+overzicht_bezoeken_users <- users %>%
+  mutate(teller = str_c(first_name, " ", last_name)) %>%
+  left_join(bezoeken_per_teller, by = c("meetnet", "teller")) %>%
+  select(teller, email, role, soortgroep, meetnet, teller_type, n_tellingen_meetnet, jaar_min_telling, jaar_max_telling)
+
+write_csv2(overzicht_bezoeken_users, "output/overzicht_tellingen_users.csv", na = "")
 #############################################################################################################
 
 bezoeken_per_jaar <- read_vc(file = "bezoeken", root = "raw") %>%
@@ -249,15 +281,22 @@ write.csv2(visits_libellen, "output/bezoeken_libellen_id_wnm_account.csv", row.n
 ########################################################
 # Rapport afwijking soortenbesluit
 
-year_rapportage <- 2022
+year_rapportage <- 2023
 
 aantallen <- read_vc("raw/aantallen")
 
 aantallen_planten_orig <- read_vc("raw/aantallen_planten") 
-unique(aantallen_planten_orig$beschrijving_floroncode)
+
+beschr_floron_code <- aantallen_planten_orig %>%
+  distinct(protocol, code, beschrijving_floroncode)
+
+aantallen_migratie <- read_csv2("output/controle_plantendata/plantenmeetnetten_migratie_2023.csv") %>%
+  left_join(beschr_floron_code, by = c("code", "protocol"))
+
 
 aantallen_planten <- aantallen_planten_orig %>%
   filter(validatie != -1) %>%
+  bind_rows(aantallen_migratie) %>%
   mutate(aantal_min = ifelse(beschrijving_floroncode == "<1 m²", 0,
                              ifelse(beschrijving_floroncode == "1-5 m²", 1,
                                     ifelse(beschrijving_floroncode == ">5-25 m²", 5,
@@ -279,6 +318,8 @@ aantallen_planten <- aantallen_planten_orig %>%
 aantallen_rapportageANB <- aantallen %>%
   bind_rows(aantallen_planten) %>%
   filter(levensstadium != "") %>%
+  filter(type_aantal != "max aantal") %>%
+  filter(aantal != 999) %>%
   mutate(levensstadium = ifelse(meetnet == "Hazelmuis", "nest", levensstadium)) %>%
   filter(jaar == year_rapportage) %>%
   group_by( meetnet, levensstadium, locatie, visit_id, soort_nl, soort_wet, primaire_soort) %>%
@@ -303,7 +344,7 @@ aantallen_rapportageANB <- aantallen %>%
   select(meetnet, 'Nederlandse naam', 'wetenschappelijke naam', specimens, aantalGeteldTotaal, datum, impact, locatie, tijdstip, everything()) %>%
   select(-primaire_soort)
 
-write_excel_csv2(aantallen_rapportageANB, "Output/Afwijkingsvergunning_21-202358_rapportage_2023_resultaten_2022_bijlage.csv", na = "")
+write_excel_csv2(aantallen_rapportageANB, "Output/Afwijkingsvergunning_21-202358_rapportage_2024_resultaten_2023_bijlage.csv", na = "")
 
 
 ########################################################
@@ -595,30 +636,59 @@ aantallen_rombout <- get_counts_smp() %>%
 
 visits_rombout <- get_visits_smp() %>%
   filter(meetnet %in% c("Rivierrombout", "Beekrombout")) %>%
-  select(visit_id, bezoek_status, voor_analyse, notes)
+  select(visit_id, bezoek_status, voor_analyse, opmerking)
 
-aantallen_beekrombout <- aantallen_rombout %>%
-  filter(locatie == "Postels vaartje") %>%
+aantallen_rombout_loc <- aantallen_rombout %>%
   filter(primaire_soort) %>%
+  group_by(visit_id) %>%
+  mutate(type_telling = ifelse(any(!is.na(x)), "punttelling", "locatietelling")) %>%
+  ungroup() %>%
+  filter(!(type_telling == "punttelling" & is.na(x))) %>% 
   group_by(meetnet, locatie, datum, visit_id, levensstadium) %>%
-  summarise(aantal = sum(aantal)) %>%
+  summarise(aantal = sum(aantal),
+            n = (n())) %>%
   ungroup() %>%
   left_join(visits_rombout, by = c("visit_id")) %>%
-  select(meetnet, locatie, datum, bezoek_status, voor_analyse, levensstadium, aantal, notes) %>%
+  select(meetnet, locatie, datum, bezoek_status, voor_analyse, levensstadium, aantal, opmerking) %>%
   filter(voor_analyse) 
-  
-aantallen_rivierrombout <- aantallen_rombout %>%
-  filter(primaire_soort) %>%
+
+locaties_rombout <- get_locations_smp() %>%
+  filter(meetnet %in% c("Rivierrombout", "Beekrombout")) %>%
+  select(meetnet, locatie)
+
+start_transect <- locaties_rombout %>%
+  st_startpoint() %>%
+  st_as_sf()
+
+end_transect <- locaties_rombout %>%
+  st_endpoint() %>%
+  st_as_sf()
+
+leaflet(locaties_rombout) %>%
+  addTiles() %>%
+  addPolylines() %>%
+  addCircleMarkers(data = start_transect, color = "yellow") %>%
+  addCircleMarkers(data = end_transect, color = "red")
+
+metadata_transect <- locaties_rombout %>%
+  st_transform(31370) %>%
+  mutate(lengte_m = round(drop_units(st_length(geom)), 1)) %>%
+  st_drop_geometry() %>%
+  mutate(start_transect_x = st_coordinates(start_transect)[, 1],
+         start_transect_y = st_coordinates(start_transect)[, 2],
+         end_transect_x = st_coordinates(end_transect)[, 1],
+         end_transect_y = st_coordinates(end_transect)[, 2])
+
+aantallen_rombout_loc %>%
+  filter(meetnet == "Beekrombout") %>%
+  write_csv2("output/aantallen_beekrombout.csv")
+
+aantallen_rombout_loc %>%
   filter(meetnet == "Rivierrombout") %>%
-  group_by(meetnet, locatie, datum, visit_id, levensstadium) %>%
-  summarise(aantal = sum(aantal)) %>%
-  ungroup() %>%
-  left_join(visits_rombout, by = c("visit_id")) %>%
-  select(meetnet, locatie, datum, bezoek_status, voor_analyse,  levensstadium, aantal, notes) %>%
-  filter(voor_analyse) 
+  write_csv2("output/aantallen_rivierrombout.csv")
 
-write_csv2(aantallen_beekrombout, "output/aantallen_beekrombout.csv")
-write_csv2(aantallen_rivierrombout, "output/aantallen_rivierrombout.csv")
+metadata_transect %>%
+  write_csv2("output/metadata_locaties_rombout.csv")
 
 #########################################
 
@@ -851,3 +921,73 @@ werkpakket_planning <- werkpakketten_locaties %>%
 
 write_csv2(werkpakket_planning, "output/abv_locaties_tellers_2024.csv", na = "")
 
+##################################################################
+### data roi
+
+filename_roi <- "zwartebeek/Vallei van de Zwarte Beek.shp"
+
+roi <- read_sf(str_c("gis/roi/", filename_roi), crs = 31370) %>%
+  st_transform(4326) %>%
+  mutate(in_roi = TRUE) %>%
+  select(in_roi)
+
+locaties_roi <- st_read("raw/meetnetten_locaties.gpkg", "locaties") %>%
+  filter(locatie_type == "locatie",
+         meetnet_type == "meetnet",
+         meetnet != "Algemene Vlindermonitoring") %>%
+  filter(is_active) %>%
+  mutate(check = sf::st_is_valid(geom),
+         geom_type = ifelse(str_detect(geom_text, "POINT"), "point", "polygon")) %>%
+  filter(check) %>%
+  st_join(roi) %>%
+  filter(!is.na(in_roi)) %>%
+  arrange(soortgroep)
+
+roi %>%
+  leaflet() %>%
+  addTiles() %>%
+  addPolygons() %>%
+  addPolygons(data = filter(locaties_roi, geom_type == "polygon"),  color = "yellow", popup = ~str_c(meetnet, " - ", locatie)) %>%
+  addCircleMarkers(data = filter(locaties_roi, geom_type == "point"),  color = "red", popup = ~str_c(meetnet, " - ", locatie))
+
+aantallen_roi <- read_vc("raw/aantallen") %>%
+  semi_join(locaties_roi, c("meetnet", "locatie")) %>%
+  group_by(meetnet, protocol, locatie, datum, visit_id, soort_nl, soort_wet, levensstadium, x, y) %>%
+  summarize(aantal = sum(aantal)) %>%
+  ungroup() %>%
+  filter(!is.na(soort_nl))
+
+aantallen_roi_planten <- read_vc("raw/aantallen_planten") %>%
+  semi_join(locaties_roi, c("meetnet", "locatie")) %>%
+  select(meetnet, protocol, locatie, datum, visit_id, soort_nl, soort_wet, code, beschrijving_floroncode) %>%
+  filter(!is.na(soort_nl))
+
+aantallen_roi_abv <- read_vc("raw/aantallen_abv") %>%
+  semi_join(locaties_roi, c("meetnet", "locatie")) %>%
+  group_by(meetnet, protocol, locatie, datum, visit_id, soort_nl, soort_wet) %>%
+  summarize(aantal = sum(aantal)) %>%
+  ungroup() %>%
+  filter(!is.na(soort_nl))
+
+tellingen_roi <- aantallen_roi %>%
+  bind_rows(aantallen_roi_abv) %>%
+  bind_rows(aantallen_roi_planten) %>%
+  arrange(meetnet, locatie, datum, soort_nl)
+
+write_csv2(tellingen_roi, "processed/tellingen_roi.csv") 
+
+st_write(locaties_roi, "processed/locaties_roi.gpkg")
+
+locaties_roi %>%
+  st_drop_geometry() %>%
+  select(meetnet, locatie) %>%
+  filter(meetnet != "Heivlinder") %>%
+  write_csv2("processed/meetnetlocaties_zwarte_beek.csv")
+
+tellingen_roi %>%
+  filter(meetnet != "Heivlinder") %>%
+  write_csv2("processed/tellingen_zwarte_beek.csv")
+  
+
+
+####
