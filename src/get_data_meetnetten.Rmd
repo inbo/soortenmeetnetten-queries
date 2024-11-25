@@ -517,9 +517,48 @@ aantallen_wintertellingen <- dbGetQuery(con, query_aantallen_wintertellingen)
 
 write_vc(aantallen_wintertellingen, "aantallen_wintertellingen", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id", "soort_nl"), strict = FALSE)
 ```
+### Covariabelen
 
+```{r}
+query_covariabelen_visit <- "Select P.Name as meetnet
+    , PR.name as protocol
+    , V.ID as visit_id
+    , A.name as bezoekvariabele
+    , case when C.value is null then VV.value else C.name end as waarde
+    , U.name as eenheid
+from staging_Meetnetten.Projects_project P
+    INNER JOIN staging_Meetnetten.Fieldwork_visit V on V.project_ID = P.ID
+    INNER JOIN staging_Meetnetten.Protocols_protocol PR on PR.ID = V.protocol_ID
+    inner JOIN staging_Meetnetten.fieldwork_visitvalue VV on VV.object_ID = V.ID
+    left outer JOIN staging_Meetnetten.model_attributes_attribute A on A.ID = VV.attribute_ID
+    left outer Join staging_Meetnetten.model_attributes_unit U on U.id = A.unit_id
+    LEFT Outer Join staging_Meetnetten.Model_attributes_choice C on C.Attribute_id = VV.attribute_id and cast(C.id as varchar(100)) = VV.value
+Order by P.Name, PR.name, VV.object_ID"
 
+query_covariabelen_sample <- "Select P.Name as meetnet
+    , PR.name as protocol
+    , V.ID as visit_id
+    , SA.id as sample_id
+    , A.name as bezoekvariabele
+    , SV.value as waarde
+    , U.name as eenheid
+from staging_Meetnetten.Projects_project P
+    INNER JOIN staging_Meetnetten.Fieldwork_visit V on V.project_ID = P.ID
+    INNER JOIN staging_Meetnetten.Protocols_protocol PR on PR.ID = V.protocol_ID
+    left outer join staging_Meetnetten.fieldwork_sample SA on SA.visit_ID = V.ID
+    inner JOIN staging_Meetnetten.fieldwork_samplevalue SV on SV.object_ID = SA.ID
+    left outer JOIN staging_Meetnetten.model_attributes_attribute A on A.ID = SV.attribute_ID
+    left outer Join staging_Meetnetten.model_attributes_unit U on U.id = A.unit_id
+    LEFT Outer Join staging_Meetnetten.Model_attributes_choice C on C.Attribute_id = SV.attribute_id and cast(C.id as varchar(100)) = SV.value
+where 1=1
+Order by P.Name, PR.name, SV.object_id"
 
+covariabelen_visit <- dbGetQuery(con, query_covariabelen_visit)
+covariabelen_sample <- dbGetQuery(con, query_covariabelen_sample)
+
+write_vc(covariabelen_visit, "covariabele", root = "../raw", sorting = c("meetnet","visit_id"), strict = FALSE)
+write_vc(covariabelen_sample, "covariabele_sample", root = "../raw", sorting = c("meetnet","visit_id", "sample_id"), strict = FALSE)
+```
 
 
 
