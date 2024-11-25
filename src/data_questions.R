@@ -3,6 +3,7 @@ library(tidyverse)
 library(sf)
 library(lubridate)
 library(n2khab)
+library(inbodb)
 library(leaflet)
 library(readxl)
 library(units)
@@ -12,6 +13,7 @@ library(lwgeom)
 #                         build_vignettes = TRUE,
 #                         upgrade = TRUE)
 source("../soortenmeetnetten-analysis/source/functions_smp.r")
+con <- connect_inbo_dbase("S0008_00_Meetnetten")
 
 ######################################################################
 
@@ -989,5 +991,31 @@ tellingen_roi %>%
   write_csv2("processed/tellingen_zwarte_beek.csv")
   
 
+#### vuursalmander
 
-####
+locaties_select <- c("Pyreneeën (Ter Guchten)", "Hayesbos", "Steenbergbos", "Trimpont", "Kapellenbos", "Hoog Deurne - Tombele")
+
+observations <- get_meetnetten_observations(con,
+                                            scheme_name = "Vuursalamander",
+                                            collect = TRUE) %>%
+  filter(location %in% locaties_select) 
+
+observations_select <- observations %>%
+  select(scheme, protocol, location, start_date, name_nl, scientific_name, life_stage, count, x, y) %>%
+  arrange(location)
+
+observations_select  %>%
+  write_csv2("output/tellingen_vuursalamander.csv")
+
+locatie_vuursalamander <- get_meetnetten_locations(con,
+                                             scheme_name = "Vuursalamander")
+
+main_loc <- locatie_vuursalamander$main_locations %>%
+  filter(location %in% locaties_select) 
+
+sublocatie <- locatie_vuursalamander$sublocations %>%
+  filter(location %in% locaties_select) %>%
+  select(scheme, location)
+
+sublocatie %>%
+  st_write("output/transecten_vuursalamander.shp", delete_dsn = TRUE)
