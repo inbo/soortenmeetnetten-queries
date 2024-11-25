@@ -17,11 +17,11 @@ jaardoelen <- read_vc(root =  "../metadata", file = "monitoring_targets")
 
 
 ```{r}
-jaardoelen_2023 <- read_csv2( "../metadata/jaardoelen_2023.csv")
+jaardoelen_2024 <- read_csv2( "../metadata/jaardoelen_2024.csv")
 
 jaardoelen_update <- jaardoelen %>%
-  filter(jaar != 2023) %>%
-  bind_rows(jaardoelen_2023)
+  filter(jaar != 2024) %>%
+  bind_rows(jaardoelen_2024)
 ```
 
 
