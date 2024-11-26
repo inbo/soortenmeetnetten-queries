@@ -148,10 +148,52 @@ inner join staging_Meetnetten.accounts_user u on u.id = pb.user_id
 "
 locatie_users_reserve <- dbGetQuery(con, query_locatie_users_reserve)
 
+query_tellers <- "Select PG.name as soortgroep
+    , P.Name as meetnet
+    , V.task_id
+    , T.name as taak
+    , V.id as visit_id
+    , V.start_date as datum
+    , V.year_target as jaardoel
+    , L.name as locatie
+    , PR.name as protocol
+    , u.first_name as first_name_hoofdteller
+    , u.last_name as last_name_hoofdteller
+    , u2.first_name as first_name_medeteller
+    , u2.last_name as last_name_medeteller
+from staging_Meetnetten.Projects_project P
+    inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+    inner join staging_Meetnetten.fieldwork_visit V on V.project_id = P.id
+    left outer join staging_Meetnetten.projects_task T on T.ID = V.task_id
+    Inner Join staging_Meetnetten.Locations_location L on L.ID = V.location_ID
+    Inner join staging_Meetnetten.Protocols_protocol PR on PR.id = V.protocol_ID
+    INNEr JOIN staging_Meetnetten.accounts_user U on U.ID = V.user_id
+    left outer join staging_Meetnetten.fieldwork_visit_co_observers CO on CO.visit_id = V.id
+    left outer join staging_Meetnetten.accounts_user U2 on U2.ID = CO.user_id
+Order by PG.name
+    , P.Name
+    , L.name
+    , V.start_date"
+
+tellers_orig <- dbGetQuery(con, query_tellers)
+
+tellers <- tellers_orig %>%
+  mutate(jaar = as.numeric(format(datum, "%Y")),
+         hoofdteller = str_c(first_name_hoofdteller, " ", last_name_hoofdteller),
+         medeteller = str_c(first_name_medeteller, " ", last_name_medeteller)) %>%
+  select(-last_name_medeteller, -last_name_hoofdteller, -first_name_hoofdteller, -first_name_medeteller) %>%
+  gather(hoofdteller, medeteller, key = "type_teller", value = "naam_teller") %>%
+  filter(naam_teller != "") %>%
+  unique()
+  
 write_vc(meetnetten_users, "meetnetten_users", root = "../raw", sorting = c("meetnet", "last_name"), strict = FALSE)
 write_vc(locatie_users, "locatie_users", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
 write_vc(locatie_users_reserve, "locatie_users_reserve", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
-  
+write_vc(tellers, "tellers", root = "../raw", sorting = c("meetnet", "locatie", "visit_id", "type_teller", "naam_teller"), strict = FALSE)
+
+check <- tellers %>%
+  group_by(meetnet, locatie, visit_id, type_teller, naam_teller) %>%
+  filter(n() > 1)
 ```
 
 
