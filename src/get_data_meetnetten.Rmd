@@ -271,6 +271,7 @@ write_vc(taken, "taken", root = "../raw", sorting = c("soortgroep", "meetnet", "
 query_selectLocations <- "SELECT
     PG.name as soortgroep,
     L.name as locatie,
+    LT.name as tellocatie_type,
     L.id,
     L.parent_id,
     P.name as meetnet,
@@ -288,6 +289,7 @@ query_selectLocations <- "SELECT
     INNER JOIN staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
     LEFT JOIN staging_Meetnetten.accounts_user U on U.ID = PL.user_id
     LEFT JOIN staging_Meetnetten.projects_projectregion R on R.id = PL.projectregion_id
+    LEFT JOIN staging_Meetnetten.locations_locationtype LT on LT.id = L.type_id
     LEFT JOIN staging_Meetnetten.locations_location L2 on L2.id = R.location_id
 and P.name <> 'Algemene Vlindermonitoring'"
 
@@ -299,7 +301,7 @@ locaties_sf <- locaties %>%
          type = ifelse(meetnet_type == "meetnet",
                        ifelse(is_sample == 1, "meetnetlocatie", "optionele locatie"),
                        ifelse(meetnet_type == "inhaalslag", "locatie inhaalslag", NA))) %>%
-  select(soortgroep, meetnet, locatie, regio, is_active, is_sample, locatie_type, everything()) %>%
+  select(soortgroep, meetnet, locatie, locatie_type, regio, is_active, is_sample, locatie_type, everything()) %>%
   mutate(geom = geom_text) %>%
   st_as_sf(wkt = "geom", crs = 4326)
 
