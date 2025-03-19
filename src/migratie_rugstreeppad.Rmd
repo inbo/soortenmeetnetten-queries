@@ -24,7 +24,7 @@ conflicts_prefer(dplyr::filter())
 
 path <- fileman_up("soortenmeetnetten-analysis")
 
-source(file.path(path, "src/functions_smp.R"))
+source(file.path(path, "source/functions_smp.R"))
 ```
 
 # Data
@@ -59,7 +59,7 @@ aantallen_meetnetten <- get_counts_smp() %>%
 
 visits_meetnetten <- get_visits_smp() %>%
   filter(meetnet == "Rugstreeppad") %>%
-  select(visit_id, hoofdteller, bezoek_status, notes)
+  select(visit_id, hoofdteller, bezoek_status, opmerking)
   
 aantallen_meetnetten <- aantallen_meetnetten %>%
   left_join(visits_meetnetten, by = "visit_id")
@@ -80,7 +80,7 @@ data_aantallen_2022 %>%
   kable_styling()
 ```
 
-**Enkel eitellingen migreren naar meetnetten.be of alle data (exlusief dode dieren)? Enkel eitellingen want bezoeken gebeuren overdag?**
+**Enkel eitellingen migreren naar meetnetten.be of alle data (exlusief dode dieren)? Enkel eitellingen want bezoeken gebeuren overdag!**
 
 ```{r}
 data_rugstreeppad_2022 <- data_aantallen_2022 %>%
@@ -171,9 +171,10 @@ data_2022_migratie <- data_rugstreeppad_2022 %>%
   filter(kleed == "ei") %>%
   mutate(meetnet = "Rugstreeppad",
          protocol = "Rugstreeppad - Transect",
-         bezoek_status = "Telmethode niet gevolgd",
+         bezoek_status = "Conform protocol",
+         zoekinspanning = "enkel eisnoeren",
          hoofdteller = "Tim Vochten") %>%
-  select(meetnet, protocol, locatie, datum, hoofdteller , bezoek_status, levensstadium = kleed, aantal)
+  select(meetnet, protocol, locatie, datum, hoofdteller , bezoek_status, zoekinspanning, levensstadium = kleed, aantal)
 
 data_2022_migratie <- data_2022_migratie %>%
   st_drop_geometry() %>%
@@ -214,6 +215,8 @@ aantallen_migratie_2021_update <- aantallen_migratie_2021_update %>%
   mutate(wijziging_sample = ifelse(wijziging == "bezoek opsplitsen",
                         ifelse(locatie_oud != locatie, "verwijder sample van bestaand bezoek en voeg toe aan nieuw bezoek", "behoud sample"),
                         NA)) %>%
+  mutate(bezoek_status = "Conform protocol",
+         zoekinspanning = "Enkel eisnoeren") %>%
   select(meetnet, protocol, locatie_oud, locatie, datum, visit_id, sample_id, hoofdteller, bezoek_status, levensstadium, aantal, wijziging, wijziging_sample)
 
 aantallen_migratie_2021_update <- aantallen_migratie_2021_update %>%
