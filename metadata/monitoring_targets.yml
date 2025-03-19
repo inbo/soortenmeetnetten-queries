@@ -1,21 +1,25 @@
 ..generic:
-  git2rdata: 0.4.0
+  git2rdata: 0.5.0
   optimize: yes
   NA string: NA
   sorting:
   - meetnet
   - jaar
-  hash: ba624cb857070160aabe2170af5a0d1e123f8d95
-  data_hash: 944e482fc2870ca0b0e6722c4ce4192d641dd207
+  hash: bebb182540b90a30d5ffa929504e644cbea1404b
+  data_hash: 683aba23d43a1cf6b02c9c25527985c803782eb1
 meetnet:
   class: character
 meetfrequentie_doel:
   class: numeric
+  digits: 6
 jaar:
   class: numeric
+  digits: 6
 jaardoel:
   class: numeric
+  digits: 6
 eenheid:
   class: character
 cyclusdoel:
   class: numeric
+  digits: 6
