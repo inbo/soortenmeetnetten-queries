@@ -402,25 +402,31 @@ transecten_heivlinder %>%
 rugstreeppad_aantallen <-  aantallen %>%
   inner_join(status_bezoek, by = "visit_id") %>%
   filter(meetnet == "Rugstreeppad") %>%
-  select(meetnet, protocol, locatie, visit_id, datum, bezoek_status, sample_id, x, y, levensstadium, activiteit, aantal)
+  mutate(activiteit = ifelse(activiteit == "calling", "roepend",
+                             ifelse(activiteit == "present", "ter plaatse", activiteit)),
+         levensstadium = ifelse(levensstadium == "egg", "eisnoer",
+                                ifelse(levensstadium == "Larva", "larve",
+                                       ifelse(levensstadium == "juvenile (<2cm)", "juveniel (<2cm)",
+                                              ifelse(levensstadium == "juvenile (>2cm)", "juveniel (>2cm)", levensstadium))))) %>%
+  select(meetnet, protocol, locatie, visit_id, datum, bezoek_status, sample_id, x, y, levensstadium, activiteit, aantal) %>%
+  arrange(locatie, datum)
 
-write_excel_csv2(rugstreeppad_aantallen, "output/datavraag_heivlinder_rugstreeppad/rugstreeppad_aantallen_puntlocatie_versie2021-04-12.csv")
+write_excel_csv2(rugstreeppad_aantallen, "output/data_rugstreeppad/rugstreeppad_aantallen_puntlocatie_versie2025-02-25.csv")
 
 rugstreeppad_aantallen_bezoek <-  rugstreeppad_aantallen %>%
   group_by(meetnet, protocol, locatie, visit_id, datum, bezoek_status, levensstadium, activiteit) %>%
   summarise(aantal = sum(aantal)) %>%
   ungroup()
 
-write_excel_csv2(rugstreeppad_aantallen, "output/datavraag_heivlinder_rugstreeppad/rugstreeppad_aantallen_versie2021-04-12.csv")
+write_excel_csv2(rugstreeppad_aantallen_bezoek, "output/data_rugstreeppad/rugstreeppad_aantallen_bezoek_versie2025-02-25.csv")
 
 locaties_rugstreeppad <- locaties %>%
   filter(meetnet == "Rugstreeppad") %>%
-  filter(is_active) %>%
   filter(locatie_type == "locatie") %>%
-  select(meetnet, locatie, is_sample) 
+  select(meetnet, locatie, actieve_locatie = is_active) 
 
 locaties_rugstreeppad %>%
-  st_write("output/datavraag_heivlinder_rugstreeppad/rugstreeppad_locaties_versie2021-04-12.shp", driver = "ESRI Shapefile")
+  st_write("output/data_rugstreeppad/rugstreeppad_locaties_versie2025-02-25.shp", driver = "ESRI Shapefile")
 
 ########################################
 
@@ -800,15 +806,25 @@ locaties_bosbeek %>%
 
 ##################################################
 
-kempense_heidelibel <- get_counts_smp() %>%
-  filter(meetnet == "Kempense heidelibel")
+kempense_heidelibel <- get_meetnetten_observations(connection = con,
+                                                   scheme_name = "Kempense heidelibel",
+                                                   collect = TRUE) 
 
-aantallen_kempense_heidelibel <- kempense_heidelibel %>%
-  filter(primaire_soort) %>%
-  select(meetnet, protocol, locatie, datum, soort_nl, soort_wet, levensstadium, activiteit, geslacht, aantal, x, y)
+kempense_heidelibel_hageven <- kempense_heidelibel %>%
+  filter(target_species) %>%
+  filter(str_detect(location, "Hageven")) 
 
-aantallen_kempense_heidelibel %>%
-  write_csv2("output/aantallen_kempense_heidelibel.csv", na = "")
+kempense_heidelibel_hageven_totaal <- kempense_heidelibel_hageven %>% 
+  mutate(year = year(start_date)) %>%
+  group_by(scheme, protocol, location, year, name_nl, scientific_name) %>%
+  summarise(aantal_totaal = sum(count),
+            aantal_max = max(count),
+            n_bezoeken = n_distinct(visit_id)) %>%
+  ungroup() %>%
+  mutate(aantal_gemiddeld = round(aantal_totaal/n_bezoeken, 1))
+
+kempense_heidelibel_hageven_totaal %>%
+  write_csv2("output/aantallen_kempense_heidelibel_hageven.csv", na = "")
 
 ##################################################
 
@@ -1019,3 +1035,22 @@ sublocatie <- locatie_vuursalamander$sublocations %>%
 
 sublocatie %>%
   st_write("output/transecten_vuursalamander.shp", delete_dsn = TRUE)
+
+##########
+## argusvlinder
+
+arguslocaties <- aantallen %>%
+  filter(meetnet == "Argusvlinder") %>%
+  distinct(meetnet, locatie)
+
+argus_secundair <- aantallen %>%
+  filter(soort_nl == "Argusvlinder") %>%
+  filter(!primaire_soort) %>%
+  filter(! locatie %in% arguslocaties$locatie) %>%
+  group_by(meetnet, visit_id, locatie, datum, sublocatie, primaire_soort, soort_nl) %>%
+  summarise(aantal = sum(aantal)) %>%
+  ungroup() %>%
+  arrange(meetnet, locatie, datum)
+  
+
+write_csv2(argus_secundair, "output/argusvlinder_secundair.csv")
