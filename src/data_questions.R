@@ -1054,3 +1054,47 @@ argus_secundair <- aantallen %>%
   
 
 write_csv2(argus_secundair, "output/argusvlinder_secundair.csv")
+
+##########################
+# overzicht vleermuizen
+
+meetnet_select <- "Vleermuizen - Wintertellingen"
+
+locaties <- get_locations_smp() %>%
+  filter(meetnet == meetnet_select) 
+
+provincies <- read_admin_areas(dsn = "provinces") %>%
+  select(provincie = name)
+
+hoofdlocaties <- locaties %>%
+  st_transform(crs = 31370) %>%
+  st_join(provincies) %>%
+  st_drop_geometry() %>%
+  filter(is_active) %>%
+  filter(locatie_type == "locatie") %>%
+  mutate(hoofdteller =str_c(first_name, " ", last_name)) %>%
+  select(meetnet, locatie, tellocatie_type, eurobats = is_sample, regio, provincie, hoofdteller)
+
+bezoeken <- get_meetnetten_visits(con, scheme_name = meetnet_select, collect = TRUE) %>%
+  filter(start_date >= "2024-09-01")
+
+aantallen <- get_meetnetten_observations(con, scheme_name = meetnet_select, collect = TRUE) %>%
+  filter(start_date >= "2024-09-01")
+
+aantallen_locatie <- aantallen %>%
+  filter(!is.na(name_nl)) %>%
+  group_by(visit_id, locatie = location, doelsoort = target_species, naam_nl = name_nl, naam_wet = scientific_name) %>%
+  summarise(aantal_totaal =sum(count)) %>%
+  ungroup()
+
+bezoeken_aantal <- bezoeken %>%
+  select(meetnet = scheme, locatie = location, visit_id, datum = start_date, bezoek_status = visit_status, notes) %>%
+  left_join(aantallen_locatie, by = c("visit_id", "locatie"))
+
+bezoeken_locatie <- hoofdlocaties %>%
+  left_join(bezoeken_aantal, by = c("meetnet", "locatie")) %>%
+  arrange(locatie)
+
+bezoeken_locatie %>%
+  mutate(notes = str_remove(notes, "\\+")) %>%
+  write_csv2("output/overzicht_vleermuizen_wintertellingen_2024_2025.csv", na = "")
