@@ -194,9 +194,11 @@ check_naam_teller <- data_waarnemingen_migratie %>%
   filter(waarnemers_meetnetten != waarnemers_waarnemingen)
 
 data_waarnemingen_migratie <- data_extern_locaties %>%
-  mutate(hoofdteller = ifelse(str_to_lower(waarnemer) == "vincent smeekens", "bart hoeymans",
+  mutate(hoofdteller = ifelse(str_to_lower(waarnemer) == "vincent smeekens" & locatie == "Merksplas - Merkske - Moer (b5-27-32)", "bart hoeymans",
                             ifelse(str_to_lower(waarnemer) == "rijmenans gilbert", "gilbert rijmenans",
-                                   str_to_lower(waarnemer)))
+                                   ifelse(str_to_lower(waarnemer) == "indra jacobs" & datum == "2024-08-07", "joost reyniers",
+                                          ifelse(str_to_lower(waarnemer) == "els", "els vandenbroucke",
+                                                 str_to_lower(waarnemer)))))
                                    ) %>%
   filter(!is.na(floroncode)) %>%
   filter(!is.na(locatie)) %>%

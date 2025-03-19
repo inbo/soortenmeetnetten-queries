@@ -15,7 +15,7 @@ library(inbodb)
 con <- connect_inbo_dbase("S0008_00_Meetnetten")
 ```
 
-### Bezoeken
+# Bezoeken
 
 ```{r}
 
@@ -64,7 +64,9 @@ bezoeken <- bezoeken_orig %>%
          doy = as.numeric(format(datum, "%j")),
          sublocatie = ifelse(is.na(hoofdlocatie), NA, locatie),
          locatie = ifelse(is.na(hoofdlocatie), locatie, hoofdlocatie),
-         hoofdteller = str_c(first_name, " ", last_name)) %>%
+         hoofdteller = str_c(first_name, " ", last_name),
+         start_time = as.character(start_time),
+         end_time = as.character(end_time)) %>%
   select(-hoofdlocatie, -first_name, -last_name) %>%
   group_by(meetnet, protocol, locatie, jaar, visit_id) %>%
   mutate(i_bezoek = rank(doy)) %>%
@@ -74,22 +76,9 @@ bezoeken <- bezoeken_orig %>%
 
 write_vc(bezoeken, "bezoeken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "sublocatie", "visit_id"), strict = FALSE)
 
-query_medetellers <- " SELECT
-    v.visit_id as visit_id,
-    U.first_name, 
-    U.last_name
-    FROM staging_Meetnetten.fieldwork_visit_co_observers v
-    inner join staging_Meetnetten.accounts_user U on U.ID = V.user_id
-    Where 1=1
-"
-
-medetellers <- tbl(con, sql(query_medetellers)) %>%
-  collect()
-
-write_vc(medetellers, "medetellers", root = "../raw", sorting = c("visit_id", "first_name","last_name"), strict = FALSE)
 ```
 
-### Tellers en gebruikers
+# Tellers en gebruikers
 
 ```{r}
 query_locatie_users <- "
@@ -185,7 +174,20 @@ tellers <- tellers_orig %>%
   gather(hoofdteller, medeteller, key = "type_teller", value = "naam_teller") %>%
   filter(naam_teller != "") %>%
   unique()
-  
+
+query_medetellers <- " SELECT
+    v.visit_id as visit_id,
+    U.first_name, 
+    U.last_name
+    FROM staging_Meetnetten.fieldwork_visit_co_observers v
+    inner join staging_Meetnetten.accounts_user U on U.ID = V.user_id
+    Where 1=1
+"
+
+medetellers <- tbl(con, sql(query_medetellers)) %>%
+  collect()
+
+write_vc(medetellers, "medetellers", root = "../raw", sorting = c("visit_id", "first_name","last_name"), strict = FALSE)
 write_vc(meetnetten_users, "meetnetten_users", root = "../raw", sorting = c("meetnet", "last_name"), strict = FALSE)
 write_vc(locatie_users, "locatie_users", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
 write_vc(locatie_users_reserve, "locatie_users_reserve", root = "../raw", sorting = c("meetnet", "locatie", "last_name"))
@@ -197,7 +199,7 @@ check <- tellers %>%
 ```
 
 
-### Werkpakketten en taken
+# Werkpakketten en taken
 
 ```{r}
 query_werkpakket <- "
@@ -263,7 +265,7 @@ write_vc(werkpakketten_locaties, "werkpakketten_locaties", root = "../raw", sort
 write_vc(taken, "taken", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "werkpakket"), strict = FALSE)
 ```
 
-### Locaties
+# Locaties
 
 ```{r}
 query_selectLocations <- "SELECT
@@ -325,7 +327,9 @@ st_write(sublocations_transecten, "../raw/meetnetten_locaties.gpkg", layer = "tr
 ```
 
 
-### Aantallen
+# Aantallen
+
+## Algemeen
 
 ```{r}
 query_aantallen <- "select PG.name as soortgroep
@@ -406,6 +410,10 @@ aantallen <- aantallen_orig %>%
 
 write_vc(aantallen, "aantallen", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id"), strict = FALSE)
 
+```
+## Planten
+
+```{r}
 query_aantallen_planten <- "select O.id
     , PG.name as soortgroep
     , P.name as meetnet
@@ -472,7 +480,9 @@ write_vc(aantallen_planten, "aantallen_planten", root = "../raw", sorting = c("s
 ```
 
 
-```{r}
+## ABV
+
+```{r, eval = FALSE}
 query_aantallen_abv <- "select PG.name as soortgroep
     , P.name as meetnet
     , L.name as locatie
@@ -516,6 +526,11 @@ aantallen_abv <- dbGetQuery(con, query_aantallen_abv)
 
 write_vc(aantallen_abv, "aantallen_abv", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id", "soort_nl"), strict = FALSE)
 
+```
+
+## Vleermuizen wintertellingen
+
+```{r, eval = FALSE}
 query_aantallen_wintertellingen <- "select PG.name as soortgroep
     , P.name as meetnet
     , L.name as locatie
@@ -559,7 +574,67 @@ aantallen_wintertellingen <- dbGetQuery(con, query_aantallen_wintertellingen)
 
 write_vc(aantallen_wintertellingen, "aantallen_wintertellingen", root = "../raw", sorting = c("soortgroep", "meetnet", "locatie", "visit_id", "sample_id", "observation_id", "soort_nl"), strict = FALSE)
 ```
-### Covariabelen
+
+## Hazelmuis nestbuizen
+
+```{r}
+query_aantallen_nb <- "select PG.name as soortgroep
+    , P.name as meetnet
+    , L.name as locatie
+    , L1.name as sublocatie
+    , PR.name as protocol
+    , V.id as visit_id
+    , V.start_date as datum
+    , SA.Not_Counted as niet_geteld
+    , SA.is_complete as checklist
+    , SA.Notes as opmerkingen
+    , O.species_id
+    , SP.name as soort_nl
+    , SP.scientific_name as soort_wet
+    , PS.is_primary as primaire_soort
+    , O.sample_id
+    , O.sex as geslacht
+    , O.id as observation_id
+    , ACT.name as activiteit
+    , LS.name as levensstadium
+    , sc.name as observation_type
+    , scc.code
+    , scc.description
+    , O.number_min as aantal
+ from staging_Meetnetten.Projects_project P
+    inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+    inner join staging_Meetnetten.fieldwork_visit V on V.project_ID = P.ID
+    left Outer join staging_Meetnetten.protocols_protocol PR on PR.id = V.protocol_id
+    left outer join staging_Meetnetten.fieldwork_sample SA on SA.visit_ID = V.ID
+    left outer join staging_Meetnetten.fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join staging_Meetnetten.Species_species SP on SP.ID = O.species_id
+    left outer join staging_Meetnetten.species_activity ACT on ACT.id = O.activity_id
+    left outer join staging_Meetnetten.species_lifestage LS on LS.id = O.life_stage_id
+    left outer join staging_Meetnetten.Locations_location L ON L.ID = V.location_ID
+    left outer Join staging_Meetnetten.Locations_location L1 on L1.ID = SA.location_id
+    left outer join staging_Meetnetten.accounts_user U on U.ID = V.user_id
+    left outer join staging_Meetnetten.projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+    left join staging_Meetnetten.protocols_scale sc on sc.id = o.scale_id
+    left join staging_Meetnetten.protocols_scalecode scc on scc.id = o.scale_code_id
+where 1=1
+and v.project_id = 70 --Hazelmuis nestbuizen
+Order by PG.name
+    , P.name
+    , L.Name
+    , V.start_date
+    , L1.Name"
+
+aantal_hazelmuis_nestbuizen <- dbGetQuery(con, query_aantallen_nb)
+
+aantal_hazelmuis_nestbuizen <- aantal_hazelmuis_nestbuizen %>%
+  filter(!is.na(soort_nl)) %>%
+  mutate(visit_id = as.character(visit_id))
+
+write_vc(aantal_hazelmuis_nestbuizen, "aantal_hazelmuis_nestbuizen", root = "../raw", sorting = c("locatie", "sublocatie", "visit_id"), strict = FALSE)
+```
+
+
+# Covariabelen
 
 ```{r}
 query_covariabelen_visit <- "Select P.Name as meetnet
@@ -601,7 +676,39 @@ covariabelen_sample <- dbGetQuery(con, query_covariabelen_sample)
 write_vc(covariabelen_visit, "covariabele", root = "../raw", sorting = c("meetnet","visit_id"), strict = FALSE)
 write_vc(covariabelen_sample, "covariabele_sample", root = "../raw", sorting = c("meetnet","visit_id", "sample_id"), strict = FALSE)
 ```
+# Tracks
 
+```{r}
+query_tracks <- "select PG.name as soortgroep
+    , P.name as meetnet
+    , L.name as locatie
+    , PR.name as protocol
+    , V.id as visit_id
+    , V.start_date as datum
+    , v.source
+    , v.validation_status as validatie
+     , v.track_geom.STAsText() as track_geom_text
+ from staging_Meetnetten.Projects_project P
+    inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+    inner join staging_Meetnetten.fieldwork_visit V on V.project_ID = P.ID
+    inner join staging_Meetnetten.protocols_protocol PR on PR.id = V.protocol_id
+    inner join staging_Meetnetten.Locations_location L ON L.ID = V.location_ID
+where 1=1
+Order by PG.name
+    , P.name
+    , L.Name
+    , V.start_date"
+
+tracks <- dbGetQuery(con, query_tracks) %>%
+  filter(!is.na(track_geom_text)) %>%
+  filter(validatie != "-1") %>%
+  rename(geom = track_geom_text) %>%
+  st_as_sf(wkt = "geom", crs = 4326) 
+
+tracks_planten <- tracks %>%
+  filter(soortgroep == "planten")
+
+```
 
 
 
