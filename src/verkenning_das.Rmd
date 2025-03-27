@@ -1,14 +1,15 @@
 ---
 title: "Data verkenning meetnet das"
 output:
-  html_document:
+  bookdown::html_document2:
+    keep_md: TRUE
     code_folding: "hide"
     toc: TRUE
     toc_float:
       collapsed: FALSE
       smooth_scroll: FALSE
-    
 date: "2025-03-27"
+author: "Toon Westra"
 ---
 
 ```{r setup, include=FALSE}
