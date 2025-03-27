@@ -1,0 +1,379 @@
+---
+title: "Data verkenning meetnet das"
+output:
+  html_document:
+    code_folding: "hide"
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
+      smooth_scroll: FALSE
+    
+date: "2025-03-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+library(tidyverse)
+library(sf)
+library(DT)
+library(kableExtra)
+library(leaflet)
+library(n2khab)
+library(INBOtheme)
+conflicted::conflicts_prefer(dplyr::filter)
+```
+
+```{r, eval=FALSE}
+
+path <- fileman_up("soortenmeetnetten-queries")
+file <- "processed/data_burchten"
+data_das <- read_vc(file = file, root = path) %>%
+  filter(meetnet == "Das")
+
+```
+
+# Data
+
+We maken gebruik van het bestand `meetnet_das_2016_2024.csv`.
+Dit bestand is opgeslagen in volgende private [google drive folder](https://drive.google.com/drive/folders/1xgT6S1KT7znbBllE9OwjwwCTfBXbYogs).
+
+```{r}
+data_path <- "../raw/data_extern"
+das_orig <- read.csv2(file.path(data_path, "meetnet_das_2016_2024.csv"))
+```
+
+Hieronder een overzicht van de datavelden en datatypes.
+
+```{r}
+glimpse(das_orig)
+```
+
+# Dataverkenning
+
+```{r}
+data_das <- das_orig %>%
+  rename(burcht_id = burchtID, jaar = Jaar, gebied = Gebied) %>%
+  mutate(meetcyclus = ceiling((jaar - 2016 + 1) / 3)) %>%
+  group_by(meetcyclus) %>%
+  mutate(periode = str_c(min(jaar), "-", max(jaar))) %>%
+  ungroup() %>%
+  select(gebied, burcht_id, meetcyclus, periode, jaar, status, bewoning)
+
+data_das_cat <- data_das %>%
+  group_by(gebied, status, bewoning) %>%
+  summarise(n_records = n()) %>%
+  ungroup()
+```
+
+## Verschillende categorieën voor status en bewoning
+
+```{r}
+data_das_cat %>%
+  kable(caption = "Verschillende categorieën voor status en bewoning") %>%
+  kable_styling() %>%
+  collapse_rows(columns = c(1,2))
+```
+
++ Wat houdt de status 'ongekend' juist in? Gaat het zeker om een dassenburcht, maar is het niet zeker of het om een hoofd- of bijburcht gaat?
+Of is het ook niet zeker of het om een dassenburcht gaat.
+
+## Meerdere records per burcht_id en jaar 
+
++ Het komt vaak voor dat er meerdere records zijn per burcht_id in hetzelfde jaar (zie onderstaande tabel).
+Gaat het om meerdere bezoeken?
+Er is geen dataveld dat de datum weergeeft van de observatie.
+
++ Bij meerdere records per burcht_id en jaar zien we volgende gevallen:
+  + de categorieën voor status en bewoning zijn dezelfde voor de burcht (verschillende bezoeken? of dubbel ingevoerd?)
+  + de categorieën voor status en bewoning zijn verschillende voor de burcht (verschillende bezoeken?)
+  
+In onderstaande tabel kan je beide gevallen onderscheiden via de kolom `dubbel`.
+
+```{r}
+meerdere_bezoeken_jaar <- data_das %>%
+  group_by(gebied, burcht_id, jaar) %>%
+  filter(n() > 1) %>%
+  mutate(dubbel = n_distinct(bewoning, status) == 1) %>%
+  ungroup() %>%
+  arrange(gebied, burcht_id, jaar)
+```
+
+```{r}
+meerdere_bezoeken_jaar %>%
+  datatable(rownames = FALSE,
+            filter = "top",
+            caption = "Meerdere records per burcht_id en jaar")
+```
+
+## Ontbrekende data
+
+Het meetnet das werkt met een meetcyclus van 3 jaar.
+In principe worden alle burchten om de 3 jaar minstens eenmaal bezocht.
+
+```{r}
+
+overzicht_burcht_id_cyclus <- data_das %>%
+  group_by(gebied, burcht_id, periode) %>%
+  summarise(n_telling = n_distinct(jaar)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = periode,
+              values_from = n_telling, values_fill = 0)
+
+overzicht_cyclus_totaal <- data_das %>%
+  group_by(gebied, periode) %>%
+  summarise(n_burchten = n_distinct(burcht_id)) %>%
+  ungroup()
+
+overzicht_cyclus_herhaling <- data_das %>%
+  arrange(meetcyclus) %>%
+  distinct(gebied, burcht_id, periode) %>%
+  group_by(gebied, burcht_id) %>%
+  summarise(periodes = str_c(periode, collapse = " + ")) %>%
+  ungroup() %>%
+  group_by(gebied, periodes) %>%
+  summarise(n_burchten = n_distinct(burcht_id)) %>%
+  ungroup()
+
+```
+
+In onderstaande tabel tonen we het aantal bezocht burchten per periode.
+Voor het gebied Voeren, ontbreken de bezoeken van de periode 2022-2024 in de dataset.
+
+```{r}
+overzicht_cyclus_totaal %>%
+  kable(caption = "Aantal getelde burchten per periode") %>%
+  kable_styling() %>%
+  collapse_rows(columns = 1)
+```
+
+Niet alle burchten worden in elke periode geteld.
+Zie onderstaande tabel.
+
+```{r}
+overzicht_cyclus_herhaling %>%
+  kable(caption = "Overzicht herhaalde tellingen") %>%
+  kable_styling() %>%
+  collapse_rows(1)
+```
+
+In onderstaande tabel kijken we naar de meeste recente status van de burchten waarvoor er geen data is in de periode 2022-2024.
+Een mogelijke reden kan zijn dat er geen bezoek heeft plaatsgevonden in de periode 2022-2024 omdat de data aangeeft dat de burcht verdwenen is.
+Maar dit blijkt maar voor een beperkt aantal burchten het geval te zijn.
+
+Het is dus onduidelijk of de burchten waarvoor er geen data is in de periode 2022-2024 verdwenen zijn (maar data niet ingevoerd) of niet bezocht werden.
+
+
+```{r}
+niet_geteld_cyclus3 <- data_das %>%
+  arrange(meetcyclus) %>%
+  group_by(burcht_id) %>%
+  filter(meetcyclus == max(meetcyclus)) %>%
+  ungroup() %>%
+  filter(meetcyclus < 3,
+         gebied != "Voeren") %>%
+  unique() %>%
+  group_by(gebied, periode, status) %>%
+  summarise(n_burchten = n_distinct(burcht_id)) %>%
+  ungroup() %>%
+  rename(periode_laatste_bezoek = periode)
+
+niet_geteld_cyclus3 %>%
+  kable(caption = "Overzicht status van de burchten waarvoor geen data is voor de periode 2022-2024") %>%
+  kable_styling() %>%
+  collapse_rows(columns = c(1, 2))
+
+```
+
+# Overzich status en bewoning per meetcyclus
+
+Indien er meerdere observaties zijn per periode en per burcht dan selecteren we per periode de observatie in het meest recente jaar.
+
+Indien er meerdere observaties zijn per periode en per burcht in hetzelfde jaar, gaan we als volgt te werk om status te bepalen:
+
++ als een van de observaties 'Hoofdburcht' aangeeft: status = 'Hoofdburcht'
++ anders, als een van de observaties 'Bijburcht' aangeeft: status = 'Bijburcht'
++ anders, als een van de observaties 'Verdwenen' aangeeft: status = 'Verdwenen'
++ anders status = 'Ongekend'
+
+```{r}
+#meest recente telling per periode
+data_das_cyclus <- data_das %>% 
+  group_by(gebied, burcht_id, meetcyclus) %>%
+  filter(jaar == max(jaar)) %>%
+  ungroup() %>%
+  group_by(gebied, burcht_id) %>%
+  mutate(meetcyclus_min = min(meetcyclus)) %>%
+  ungroup() %>%
+  unique()
+
+status_dubbel <- data_das_cyclus %>%
+  group_by(burcht_id, jaar) %>%
+  filter(n() > 1) %>%
+  mutate(status_jaar = ifelse(any(status == "Hoofdburcht"), "Hoofdburcht",
+                              ifelse(any(status == "Bijburcht"), "Bijburcht",
+                                     ifelse(any(status == "Verdwenen"), "Verdwenen", "Ongekend")))) %>%
+  filter(status == status_jaar)  %>%
+  mutate(bewoning_jaar = ifelse(any(bewoning == "Bewoond"), "Bewoond",
+                              ifelse(any(bewoning == "Niet_bewoond"), "Niet_bewoond", "Ongekend"))) %>%
+  filter(bewoning == bewoning_jaar) %>%
+  ungroup()
+
+data_das_cyclus <- data_das_cyclus %>%
+  anti_join(status_dubbel, by = c("burcht_id", "meetcyclus")) %>%
+  bind_rows(status_dubbel) %>%
+  arrange(gebied, burcht_id, meetcyclus)
+
+all_data <- data_das_cyclus %>%
+  expand(nesting(gebied, burcht_id, meetcyclus_min), nesting(meetcyclus, periode)) 
+
+data_das_cyclus_all <- data_das_cyclus %>%
+  right_join(all_data) %>%
+  mutate(bewoning = ifelse(is.na(bewoning), "geen data", bewoning),
+         status = ifelse(is.na(status), "geen data", status)) %>%
+  filter(meetcyclus >= meetcyclus_min) %>%
+  arrange(gebied, burcht_id, meetcyclus)
+
+check_dubbel <- data_das_cyclus_all %>%
+  group_by(meetcyclus, burcht_id) %>%
+  filter(n() > 1)
+
+```
+
+## Alle burchten
+
+Onderstaande figuur geeft een overzicht van het aantal burchten per categorie van status.
+
+```{r}
+
+data_das_cyclus_all %>%
+  ggplot(aes(x = periode, fill = status)) +
+  geom_bar() +
+  facet_wrap(~gebied)
+```
+
+Onderstaande figuur toont ook de status voor bewoning.
+
++ Ik veronderstel dat verdwenen burchten altijd onbewoond zijn?
+
++ In Voeren zien we bijna uitsluitend hoofdburchten en zijn die allemaal bewoond.
+  + Is dat eigen aan het gebied?
+  + Worden in beide gebieden hetzelfde protocol gebruikt?
+
+```{r, fig.width=10}
+
+data_das_cyclus_all %>%
+  ggplot(aes(x = periode, fill = bewoning)) +
+  geom_bar() +
+  facet_grid(gebied~status) +
+  theme(axis.text.x = element_text(angle = 45))
+```
+
+## Burchten geteld in alle meetcycli
+
+Hieronder dezelfde figuren maar dan op basis van de burchten met herhaalde bezoeken:
+
++ de burchten in Haspengouw die in alle meetcycli werden bezocht
++ de burchten in Voeren die in de periodes 2016-2018 en 2019-2021 werden bezocht
+
+```{r}
+data_das_cyclus_herhaald <- data_das_cyclus_all %>%
+  filter(status != "geen data") %>%
+  group_by(gebied, burcht_id) %>%
+  mutate(n_cycli = n_distinct(meetcyclus)) %>%
+  ungroup() %>%
+  filter((n_cycli == 3 & gebied == "Haspengouw") |
+          (n_cycli == 2 & gebied == "Voeren"))  
+```
+
+```{r}
+
+data_das_cyclus_herhaald %>%
+  ggplot(aes(x = periode, fill = status)) +
+  geom_bar() +
+  facet_wrap(~gebied)
+```
+```{r, fig.width=10}
+
+data_das_cyclus_herhaald %>%
+  ggplot(aes(x = periode, fill = bewoning)) +
+  geom_bar() +
+  facet_grid(gebied~status) +
+  theme(axis.text.x = element_text(angle = 45))
+```
+
+## Verandering bewoning per burcht
+
+Om de verandering per burcht te verkennen selecteren we:
+
++ de burchten in Haspengouw in alle meetcycli werden bezocht
++ de burchten in Voeren die in de periodes 2016-2018 en 2019-2021 werden bezocht
+
+```{r}
+data_das_cyclus_bewoning_wide <- data_das_cyclus_herhaald %>%
+  select(-status, -jaar, -meetcyclus, -status_jaar, -bewoning_jaar) %>%
+  pivot_wider(names_from = periode,
+              names_prefix = "periode_",
+              values_from = "bewoning")
+
+data_das_cyclus_bewoning_long <- data_das_cyclus_bewoning_wide %>%
+  mutate(periode2016_2021 = str_c(`periode_2016-2018`, "-", `periode_2019-2021`),
+         periode2019_2024 = str_c(`periode_2019-2021`, "-", `periode_2022-2024`)) %>%
+  pivot_longer(cols = c(periode2016_2021, periode2019_2024),
+               names_to = "periode",
+               values_to = "evolutie_bewoning")
+```
+
+Onderstaande figuren tonen de veranderingen in bewoning tussen de periodes:
+
++ 2016-2018 en 2019-2021
++ 2019-2021 en 2022-2024
+
+```{r}
+data_das_cyclus_bewoning_wide %>%
+  ggplot(aes(x = `periode_2016-2018`, fill = `periode_2019-2021`)) +
+  geom_bar() +
+  facet_wrap(~gebied)
+```
+```{r}
+data_das_cyclus_bewoning_wide %>%
+  ggplot(aes(x = `periode_2019-2021`, fill = `periode_2022-2024`)) +
+  geom_bar() +
+  facet_wrap(~gebied)
+```
+
+In Haspengouw lijkt de bewoning sterker te variëren in vergelijking met Voeren.
+Voor Haspengouw is dit gebasseerd op slechts een deel van het totale aantal burchten.
+
+## Verandering status per burcht
+
+```{r}
+data_das_cyclus_status_wide <- data_das_cyclus_herhaald %>%
+  select(-bewoning, -jaar, -meetcyclus, -status_jaar, -bewoning_jaar) %>%
+  pivot_wider(names_from = periode,
+              names_prefix = "periode_",
+              values_from = "status")
+
+```
+
+Onderstaande figuren tonen de veranderingen in status tussen de periodes:
+
++ 2016-2018 en 2019-2021
++ 2019-2021 en 2022-2024
+
+
+```{r, fig.width= 8}
+data_das_cyclus_status_wide %>%
+  ggplot(aes(x = `periode_2016-2018`, fill = `periode_2019-2021`)) +
+  geom_bar() +
+  facet_wrap(~gebied)
+```
+
+
+```{r, fig.width= 8}
+data_das_cyclus_status_wide %>%
+  ggplot(aes(x = `periode_2019-2021`, fill = `periode_2022-2024`)) +
+  geom_bar() +
+  facet_wrap(~gebied)
+```
