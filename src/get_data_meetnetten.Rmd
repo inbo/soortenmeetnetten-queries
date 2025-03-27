@@ -274,6 +274,8 @@ query_selectLocations <- "SELECT
     LT.name as tellocatie_type,
     L.id,
     L.parent_id,
+    L.created,
+    L.updated,
     P.name as meetnet,
     PL.is_sample,
     PL.is_active,
