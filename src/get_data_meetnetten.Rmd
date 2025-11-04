@@ -330,7 +330,6 @@ st_write(locaties_sf, "../raw/meetnetten_locaties.gpkg", layer = "locaties", dri
 st_write(sublocations_transecten, "../raw/meetnetten_locaties.gpkg", layer = "transecten", driver = "GPKG", delete_layer = TRUE)
 ```
 
-
 # Aantallen
 
 ## Algemeen
@@ -635,6 +634,68 @@ aantal_hazelmuis_nestbuizen <- aantal_hazelmuis_nestbuizen %>%
   mutate(visit_id = as.character(visit_id))
 
 write_vc(aantal_hazelmuis_nestbuizen, "aantal_hazelmuis_nestbuizen", root = "../raw", sorting = c("locatie", "sublocatie", "visit_id"), strict = FALSE)
+```
+## Gentiaanblauwtje
+
+```{r}
+query_aantallen_gb <- "select PG.name as soortgroep
+    , P.name as meetnet
+    , L.name as locatie
+    , L1.name as sublocatie
+    , PR.name as protocol
+    , V.id as visit_id
+    , V.start_date as datum
+    , SA.Not_Counted as niet_geteld
+    , SA.is_complete as checklist
+    , SA.Notes as opmerkingen
+    , O.species_id
+    , SP.name as soort_nl
+    , SP.scientific_name as soort_wet
+    , PS.is_primary as primaire_soort
+    , O.sample_id
+    , O.sex as geslacht
+    , O.id as observation_id
+    , plant.value as plant
+    , stengel.value as stengel
+    , Knop.value as knop
+    , O.number_min as aantal
+ from staging_Meetnetten.Projects_project P
+    inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+    inner join staging_Meetnetten.fieldwork_visit V on V.project_ID = P.ID
+    left Outer join staging_Meetnetten.protocols_protocol PR on PR.id = V.protocol_id
+    left outer join staging_Meetnetten.fieldwork_sample SA on SA.visit_ID = V.ID
+    left outer join staging_Meetnetten.fieldwork_observation O on O.sample_ID = SA.ID
+    left outer join staging_Meetnetten.Species_species SP on SP.ID = O.species_id
+    left outer join staging_Meetnetten.species_activity ACT on ACT.id = O.activity_id
+    left outer join staging_Meetnetten.species_lifestage LS on LS.id = O.life_stage_id
+    left outer join staging_Meetnetten.Locations_location L ON L.ID = V.location_ID
+    left outer Join staging_Meetnetten.Locations_location L1 on L1.ID = SA.location_id
+    left outer join staging_Meetnetten.accounts_user U on U.ID = V.user_id
+    left outer join staging_Meetnetten.projects_projectspecies PS on PS.species_ID = O.species_ID and PS.project_ID = P.ID
+    left outer join (select OV.object_ID, OV.value
+                    from staging_Meetnetten.fieldwork_observationvalue OV 
+                    where OV.attribute_ID = 43)plant on plant.object_ID = O.ID
+    left outer join (select OV.object_ID, OV.value
+                    from staging_Meetnetten.fieldwork_observationvalue OV 
+                    where OV.attribute_ID in (44,66))stengel on stengel.object_ID = O.ID
+    left outer join (select OV.object_ID, OV.value
+                    from staging_Meetnetten.fieldwork_observationvalue OV 
+                    where OV.attribute_ID in (45,67))knop on knop.object_ID = O.ID
+where 1=1
+and P.name = 'Gentiaanblauwtje'
+Order by PG.name
+    , P.name
+    , L.Name
+    , V.start_date
+    , L1.Name"
+
+aantal_gb <- dbGetQuery(con, query_aantallen_gb)
+
+aantal_gb <- aantal_gb %>%
+  filter(!is.na(soort_nl)) %>%
+  mutate(visit_id = as.character(visit_id))
+
+write_vc(aantal_gb, "aantal_gentiaanblauwtje", root = "../raw", sorting = c("locatie", "visit_id", "plant", "stengel", "knop"), strict = FALSE)
 ```
 
 
