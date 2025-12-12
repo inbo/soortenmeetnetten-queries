@@ -34,6 +34,7 @@ locaties_metadata <- locaties %>%
   st_drop_geometry() %>%
   filter(locatie_type == "locatie") %>%
   distinct(meetnet, locatie, is_active, is_sample) %>%
+  mutate(is_sample = ifelse(meetnet == "Rivierrombout", TRUE, is_sample)) %>%
   mutate(is_sample_history = is_sample | (!is_active)) #huidige en historische meetnetlocaties
 
 # aantal locaties per meetnet
