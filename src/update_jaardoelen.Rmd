@@ -12,18 +12,15 @@ library(tidyverse)
 ```{r}
 jaardoelen <- read_vc(root =  "../metadata", file = "monitoring_targets")
 
-
 ```
-
 
 ```{r}
-jaardoelen_2024 <- read_csv2( "../metadata/jaardoelen_2024.csv")
+jaardoelen_2025 <- read_csv2( "../metadata/jaardoelen_2025.csv")
 
 jaardoelen_update <- jaardoelen %>%
-  filter(jaar != 2024) %>%
-  bind_rows(jaardoelen_2024)
+  filter(jaar != 2025) %>%
+  bind_rows(jaardoelen_2025)
 ```
-
 
 ```{r}
 write_vc(jaardoelen_update, root =  "../metadata", file = "monitoring_targets", sorting = c("meetnet", "jaar"), strict = FALSE)
