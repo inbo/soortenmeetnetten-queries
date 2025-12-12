@@ -1,5 +1,5 @@
 ..generic:
-  git2rdata: 0.4.0
+  git2rdata: 0.5.0
   optimize: yes
   NA string: NA
   sorting:
@@ -7,8 +7,8 @@
   - meetnet
   - protocol
   - is_sample
-  hash: 88df1a0272d6d884f3ba0dbcf44ee19574eb694d
-  data_hash: 8c75b86c633956b16efbeaa8910b3972887c37d1
+  hash: 5eaac630f7dcdd9d400ca3d8c1e9443a95eea622
+  data_hash: 3fbb1b4f6e97629e8b304f31bbc661a2c27f3de1
 soortgroep:
   class: character
 meetnet:
@@ -19,12 +19,15 @@ type:
   class: character
 duur_meetcyclus:
   class: numeric
+  digits: 6
 generatie:
   class: character
 bezoeken:
   class: numeric
+  digits: 6
 opstartjaar:
   class: numeric
+  digits: 6
 type_soort:
   class: character
 start_telperiode:
@@ -37,7 +40,9 @@ is_sample:
   class: logical
 n_locaties:
   class: numeric
+  digits: 6
 actief:
   class: numeric
+  digits: 6
 protocol_naam:
   class: character
