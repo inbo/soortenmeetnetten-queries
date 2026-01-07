@@ -1,12 +1,20 @@
 ---
 title: "Meetnet Vliegend hert"
-output: html_document
-date: "2024-12-19"
+output:
+  bookdown::html_document2:
+    keep_md: FALSE
+    toc: TRUE
+    toc_float:
+      collapsed: FALSE
+      smooth_scroll: FALSE
+date: "2026-01-07"
+author: Toon Westra
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
 library(tidyverse)
 library(sf)
 library(DT)
@@ -16,25 +24,36 @@ library(leaflet)
 ```
 
 ```{r}
-data_stagbeetle <- read.csv2("../raw/20241218_transects.csv")
+data_stagbeetle <- read_csv2("../raw/20251217_transects.csv")
 
 colnames(data_stagbeetle) <- str_replace_all(colnames(data_stagbeetle), " ", "_")
 
+check <- data_stagbeetle %>%
+  filter(is.na(number), !is.na(visit_notes)) %>%
+  filter(!str_detect(visit_notes, "Import")) %>%
+  filter(!str_detect(str_to_lower(visit_notes), "geen vh|geen v|geen e|geen w|na transect|te koud|onweersbui")) %>%
+  filter(str_detect(str_to_lower(visit_notes), " m|vliegend|flying|zie"))
+  
+check %>%
+  write_csv2("../output/aanpassen_bezoeken_stagbeetle.csv", na = "")
+
 data_stagbeetle <- data_stagbeetle %>%
   filter(country == "BE") %>%
-  mutate(year = year(start_date))
+  mutate(year = year(start_date),
+         number = as.numeric(number))
 
 visits_summary <- data_stagbeetle %>%
   group_by(year, location, start_date, visit_notes, visit_id) %>%
   summarise(count_data = all(!is.na(number)),
-            n_rexord = n(),
-            number_tot = sum(number)) %>%
+            n_record = n(),
+            number_tot = sum(number, na.rm = TRUE)) %>%
   ungroup()
 
 visits_location <- visits_summary %>%
   group_by(year, location) %>%
   summarise(n_visits = n_distinct(visit_id),
-            n_visits_data = sum(!is.na(number_tot))
+            n_visits_data = sum(!is.na(number_tot)),
+            aantal_tot = sum(number_tot)
             ) %>%
   ungroup()
   
@@ -43,22 +62,38 @@ locations_year <- visits_location %>%
   summarise(n_visits_tot = sum(n_visits) ,
             n_locaties = n_distinct(location),
             n_locaties_5bezoeken = sum(n_visits >= 5),
-            n_locaties_5bezoeken_data = sum(n_visits_data >= 5)) %>%
+            n_locaties_5bezoeken_data = sum(n_visits_data >= 5),
+            aantal_tot = sum(aantal_tot)) %>%
   ungroup()
 
-write_csv2(data_stagbeetle, "../output/stag_beetle_2024-12-18.csv")
+write_csv2(data_stagbeetle, "../output/stag_beetle_2026-01-06.csv")
 
 ```
 
-# Overzicht bezoeken 2024
+# Controle bezoeken
 
-Onderstaande tabel geeft een overzicht van de bezoeken in 2024.
-Voor een aantal bezoeken zijn de aantallen niet correct ingevoerd (soms worden de aantallen wel in het opmerkingenveld ingevoerd).
+Als er een bezoek wordt aangemaakt, maar er wordt geen waarneming toegevoegd, veronderstellen we een nulwaarneming.
+Maar bij sommige bezoeken staan de aantallen enkel in het opmerkingenveld vermeld.
+Dan veronderstellen we dus foutief een nulwaarneming.
+
+Volgende bezoeken in België moeten worden nagekeken en aangepast indien nodig.
+
+```{r}
+check %>%
+  select(visit_id, start_date, location, observer, visit_notes, number) %>%
+  datatable(rownames = FALSE,
+            filter = "top")
+```
+
+# Overzicht bezoeken 2025
+
+Onderstaande tabel geeft een overzicht van de bezoeken in 2025.
+Als geen waarneming wordt ingevoerd, veronderstellen we een nulwaarneming.
 
 ```{r}
 visits_summary %>%
-  filter(year == 2024) %>%
-  select(locatie = location, datum = start_date, opm = visit_notes, aantallen_ingevoerd = count_data, aantal_tot = number_tot) %>%
+  filter(year == 2025) %>%
+  select(locatie = location, datum = start_date, opm = visit_notes, wnm_ingevoerd = count_data, aantal_tot = number_tot) %>%
   datatable(rownames = FALSE, filter = "top")
 ```
 
@@ -69,7 +104,7 @@ Onderstaande tabel toont het aantal bezoeken per locatie (n_bezoeken) en het aan
 ```{r}
 visits_location %>%
    filter(year >= 2021) %>%
-  select(year, locatie = location, n_bezoeken = n_visits, n_bezoeken_data = n_visits_data) %>%
+  select(year, locatie = location, n_bezoeken = n_visits, aantal_tot) %>%
   arrange(locatie, year) %>%
   datatable(rownames = FALSE, filter = "top") 
   
@@ -77,28 +112,31 @@ visits_location %>%
 
 # Evaluatie jaardoelen
 
-Onderstaand overzicht toont
+Onderstaand overzicht toont per jaar:
 
 + het aantal bezochte locaties (n_locaties)
 + het aantal voldoende getelde locaties (n_locaties_5bezoeken)
-+ het aantal voldoende getelde locaties waarvoor data correct is ingevoerd (n_locaties_5bezoeken_data)
++ het totaal aantal getelde (en ingevoerde) individuen (aantal_tot)
++ het gemiddeld aantal getelde individuen per bezoek
 
 ```{r}
 jaardoel1 <- (locations_year %>%
-  filter(year == 2024))$n_locaties / 18 * 100 
+  filter(year == 2025))$n_locaties / 18 * 100 
 
 jaardoel2 <- (locations_year %>%
-  filter(year == 2024))$n_locaties_5bezoeken / 10 * 100 
+  filter(year == 2025))$n_locaties_5bezoeken / 10 * 100 
 
 jaardoel1 <- round(jaardoel1)
 jaardoel2 <- round(jaardoel2)
 
 locations_year %>%
+  select(-n_locaties_5bezoeken_data) %>%
+  mutate(`gem. aantal per bezoek` = round(aantal_tot / n_visits_tot, 1)) %>%
   kable() %>%
   kable_styling()
 ```
 
-De jaardoelen voor 2024 zijn:
+De jaardoelen voor 2025 zijn:
 
 + alle locaties minstens eenmaal tellen: `r jaardoel1` % gehaald
 + 10 locaties minstens vijfmaal tellen: `r jaardoel2` % gehaald
