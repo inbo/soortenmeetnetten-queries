@@ -61,10 +61,13 @@ mollusken	Zeggekorfslak	Zeggekorfslak - Zichtwaarneming	Steekproef	6	generatie1	
 overige	Gerande oeverspin	Gerande oeverspin - Inhaalslag	Inhaalslag	6	generatie1	1	2016	VPS	20209	20392	1	111	1	NA
 overige	Lentevuurspin	Lentevuurspin - Gebiedstelling	Integraal	1	generatie1	1	2016	VPS	20301	20351	1	6	1	NA
 overige	Lentevuurspin	Lentevuurspin - Transect	Integraal	1	generatie1	1	2016	VPS	20301	20351	1	6	1	NA
-overige	Roestbruine kniptor	Kevers - Feromoonval	Inhaalslag	6	generatie1	1	2018	VPS	20605	20696	1	32	1	NA
+overige	Roestbruine kniptor	Kevers - Feromoonval	Inhaalslag	6	generatie1	1	2018	VPS	20605	20696	1	32	0	NA
+overige	Roestbruine kniptor	Kevers - Feromoonval	Steekproef	3	generatie1	1	2024	VPS	20605	20696	1	32	1	NA
 overige	Schavertje	Sprinkhanen - Wegvangst	Integraal	1	generatie1	1	2017	VPS	20301	20361	1	4	1	NA
-overige	Vermiljoenkever	Vermiljoenkever - Larven	Pilootproject	1	generatie1	1	2021	EPS	20089	20453	0	4	1	NA
-overige	Vermiljoenkever	Vermiljoenkever - Larven	Pilootproject	1	generatie1	1	2021	EPS	20089	20453	1	33	1	NA
+overige	Vermiljoenkever	Vermiljoenkever - Larven	Pilootproject	1	generatie1	1	2021	EPS	20089	20453	0	4	0	NA
+overige	Vermiljoenkever	Vermiljoenkever - Larven	Steekproef	3	generatie1	1	2023	EPS	20089	20453	0	4	1	NA
+overige	Vermiljoenkever	Vermiljoenkever - Larven	Pilootproject	1	generatie1	1	2021	EPS	20089	20453	1	33	0	NA
+overige	Vermiljoenkever	Vermiljoenkever - Larven	Steekproef	3	generatie1	1	2023	EPS	20089	20453	1	33	1	NA
 overige	Vliegend hert	Vliegend hert - Inhaalslag	Inhaalslag	6	generatie1	6	2017	EPS	NA	NA	1	19	0	NA
 overige	Vliegend hert	Vliegend hert - Transect	Steekproef	1	generatie1	6	2019	EPS	20209	20285	1	19	1	NA
 overige	Zadelsprinkhaan	Sprinkhanen - Gebiedstelling	Integraal	1	generatie1	1	2016	VPS	20315	20346	1	6	1	NA
