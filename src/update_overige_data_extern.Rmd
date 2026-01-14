@@ -16,7 +16,7 @@ library(units)
 library(conflicted)
 conflicts_prefer(dplyr::filter())
 
-year_update <- 2024
+year_update <- 2025
 ```
 
 # Hamster en Das
@@ -32,9 +32,9 @@ data_burchten <- read_vc(file = "data_burchten", root = "../processed") %>%
 
 ```{r}
 
-data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2024/Data niet in Meetnetten.be/Hamster - Oplevering data Meetnetten 2024"
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2025/Data niet in Meetnetten.be/Hamster - Oplevering data Meetnetten 2025"
 
-burchten_nieuw_sf <- read_sf(data_path, "Meetnet Hamster_2024_waarnemingen",
+burchten_nieuw_sf <- read_sf(data_path, "Meetnet Hamster_2025_waarnemingen",
                              crs = 31370)
 
 burchten_nieuw <- burchten_nieuw_sf %>%
@@ -70,7 +70,7 @@ if (nrow(burchten_nieuw) > 0) {
 
 ```{r}
 
-percelen_update_sf_orig <- read_sf(data_path, "Meetnet Hamster_2024_percelen")
+percelen_update_sf_orig <- read_sf(data_path, "Meetnet Hamster_2025_percelen")
 
 percelen_sf <- percelen_update_sf_orig %>%
   rename(id_perceel = id, aantal_tellers = `#tellers`, oppervlakte_m2 = `opp (m2)`) %>%
@@ -113,8 +113,8 @@ burchten_nieuw_sf %>%
 
 ```{r, eval = TRUE}
 
-data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2021/Data niet in Meetnetten.be/Das"
-das_orig <- read.csv2(file.path(data_path, "meetnet_das_2016_2021.csv"))
+data_path <- "../raw/data_extern"
+das_orig <- read.csv2(file.path(data_path, "meetnet_das_2016_2024.csv"))
 
 das <- das_orig %>%
   mutate(meetnet = "Das",
@@ -137,8 +137,8 @@ overzicht_das_jaar <- das %>%
             n_locaties = n_distinct(locatie)) %>%
   ungroup()
 
-overzicht_das_cyclus2 <- das %>%
-  filter(jaar >= 2019) %>%
+overzicht_das_cyclus3 <- das %>%
+  filter(jaar >= 2022) %>%
   group_by(meetnet, locatie, opmerking) %>%
   summarise(n_bezoeken = n_distinct(datum)) %>%
   ungroup() %>%
