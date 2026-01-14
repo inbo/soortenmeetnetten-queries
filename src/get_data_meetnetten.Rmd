@@ -654,6 +654,7 @@ query_aantallen_gb <- "select PG.name as soortgroep
     , PS.is_primary as primaire_soort
     , O.sample_id
     , O.sex as geslacht
+    , LS.name as levensstadium
     , O.id as observation_id
     , plant.value as plant
     , stengel.value as stengel
@@ -693,7 +694,11 @@ aantal_gb <- dbGetQuery(con, query_aantallen_gb)
 
 aantal_gb <- aantal_gb %>%
   filter(!is.na(soort_nl)) %>%
-  mutate(visit_id = as.character(visit_id))
+  mutate(visit_id = as.character(visit_id),
+         plant = as.numeric(plant),
+         stengel = as.numeric(stengel),
+         knop = as.numeric(knop)) %>%
+  arrange(locatie, datum, visit_id, plant, stengel, knop)
 
 write_vc(aantal_gb, "aantal_gentiaanblauwtje", root = "../raw", sorting = c("locatie", "visit_id", "plant", "stengel", "knop"), strict = FALSE)
 ```
