@@ -10,3 +10,7 @@ src/datarapport/gebiedsrapport_cache/
 *.png
 *.pdf
 output
+processed
+sql
+*.html
+*.md
