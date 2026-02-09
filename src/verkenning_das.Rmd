@@ -77,36 +77,15 @@ data_das_cat %>%
   collapse_rows(columns = c(1,2))
 ```
 
-+ Wat houdt de status 'ongekend' juist in? Gaat het zeker om een dassenburcht, maar is het niet zeker of het om een hoofd- of bijburcht gaat?
-Of is het ook niet zeker of het om een dassenburcht gaat.
 
 ## Meerdere records per burcht_id en jaar 
 
-+ Het komt vaak voor dat er meerdere records zijn per burcht_id in hetzelfde jaar (zie onderstaande tabel).
-Gaat het om meerdere bezoeken?
-Er is geen dataveld dat de datum weergeeft van de observatie.
+Het komt vaak voor dat er meerdere records zijn per burcht_id in hetzelfde jaar (zie onderstaande tabel).
+Sommige burchten worden meermaals bezocht in een jaar.
+De datum van het bezoek zal nog worden toegevoegd aan de dataset.
 
-+ Bij meerdere records per burcht_id en jaar zien we volgende gevallen:
-  + de categorieën voor status en bewoning zijn dezelfde voor de burcht (verschillende bezoeken? of dubbel ingevoerd?)
-  + de categorieën voor status en bewoning zijn verschillende voor de burcht (verschillende bezoeken?)
-  
-In onderstaande tabel kan je beide gevallen onderscheiden via de kolom `dubbel`.
+Het is mogelijk dat binnen hetzelfde jaar de status van de burcht wijzigt (bij meerdere bezoeken per jaar).
 
-```{r}
-meerdere_bezoeken_jaar <- data_das %>%
-  group_by(gebied, burcht_id, jaar) %>%
-  filter(n() > 1) %>%
-  mutate(dubbel = n_distinct(bewoning, status) == 1) %>%
-  ungroup() %>%
-  arrange(gebied, burcht_id, jaar)
-```
-
-```{r}
-meerdere_bezoeken_jaar %>%
-  datatable(rownames = FALSE,
-            filter = "top",
-            caption = "Meerdere records per burcht_id en jaar")
-```
 
 ## Ontbrekende data
 
