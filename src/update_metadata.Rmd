@@ -48,7 +48,7 @@ meetnetten_n_locaties <- locaties %>%
 
 # telperiodes
 telperiodes_taak <- taken %>%
-  filter(jaar == 2023) %>%
+  filter(jaar == 2025) %>%
   select(soortgroep, meetnet, protocol, jaar, taak_start, taak_end) %>%
   unique() %>%
   mutate(protocol = ifelse(str_detect(protocol, "Vleermuizen - Wintertelling"), "Vleermuizen - Wintertelling", protocol),
