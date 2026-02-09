@@ -11,8 +11,9 @@ library(units)
 library(purrr)
 library(readxl)
 library(lubridate)
+library(leaflet)
 
-year_update <- 2024
+year_update <- 2025
 ```
 
 ## Aantallen ingevoerd in meetnetten.be
@@ -30,9 +31,10 @@ aantallen_planten_visit_id <- read_vc("aantallen_planten", "../raw") %>%
 ## Aantallen ingevoerd in waarnemingen.be
 
 ```{r}
-data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2024/Data niet in Meetnetten.be/Planten - Oplevering data Meetnetten 2024"
+data_path <- "G:/Mijn Drive/Soortenmeetnetten/Oplevering data/2025/Data niet in Meetnetten.be/Planten - Oplevering data Meetnetten 2025"
 
-planten_update_orig <- read_excel(file.path(data_path, "OpleveringMeetnetplanten_januari2025_tw.xlsx"))
+planten_update_orig <- read_excel(file.path(data_path, "Opleveringmeetnet2025_12_19.xlsx"), 
+                                  sheet = "P-CO-000701_Planten_wbe_Meetnet")
 
  planten_update <- planten_update_orig %>%
   mutate(Floroncode = ifelse(Floroncode == "0.0", "0" , Floroncode)) %>% 
@@ -42,14 +44,14 @@ planten_update_orig <- read_excel(file.path(data_path, "OpleveringMeetnetplanten
          jaar = as.numeric(format(as.Date(datum, format = "%Y-%m-%d"),"%Y")),
          uitvoerder = "vrijwilligers",
          brondatabank = "waarnemingen.be",
-         id = as.character(id)) %>%
+         id = as.character(id),
+         floroncode = ifelse(is.na(floroncode), nieuwe_locatie, floroncode),
+         nieuwe_locatie = is.na(locatie_np)) %>%
   mutate(x_coord = x, y_coord = y) %>%
   filter(!is.na(x)) %>%
   st_as_sf(coords = c("x", "y"), crs = 31370) 
 
 ```
-
-
 
 ```{r}
 
@@ -154,7 +156,6 @@ bezoeken_planten <- read_vc("bezoeken", "../raw") %>%
   filter(soortgroep == "planten") %>%
   filter(jaar >= 2018) %>%
     mutate(hoofdteller = str_to_lower(hoofdteller),
-           datum = if_else(visit_id == 57101, as.Date("2022-08-29"), datum),
            aantallen_in_meetnetten = visit_id %in% aantallen_planten_visit_id$visit_id) %>%
   left_join(locaties_planten_actief_sf, by = c("meetnet", "locatie")) %>%
   select(meetnet, locatie, protocol, datum, visit_id, hoofdteller, aantallen_in_meetnetten, opm_meetnetten = opmerking)
@@ -176,12 +177,16 @@ check_naam_teller <- data_waarnemingen_migratie %>%
   filter(waarnemers_meetnetten != waarnemers_waarnemingen)
 
 data_waarnemingen_migratie <- data_extern_locaties %>%
-  mutate(hoofdteller = ifelse(str_to_lower(waarnemer) == "vincent smeekens" & locatie == "Merksplas - Merkske - Moer (b5-27-32)", "bart hoeymans",
+  mutate(hoofdteller = ifelse(str_to_lower(waarnemer) == "ward vercruysse",  "edward vercruysse",
                             ifelse(str_to_lower(waarnemer) == "rijmenans gilbert", "gilbert rijmenans",
-                                   ifelse(str_to_lower(waarnemer) == "joseph gorissen", "jos gorissen",
-                                   ifelse(str_to_lower(waarnemer) == "indra jacobs" & datum == "2024-08-07", "joost reyniers",
+                                   ifelse(str_to_lower(waarnemer) == "bert biesemans" & datum == "2025-09-24" & locatie == "Noordelijk Eiland (c4-54-24)", "joost reyniers",
+                                   ifelse(str_to_lower(waarnemer) == "hannes ledegen", "hannes ledegen (waarnemer)",
+                                   ifelse(str_to_lower(waarnemer) == "mjcatteeuw", "marie-josée catteeuw",
+                                   ifelse(str_to_lower(waarnemer) %in% c("nico van loco", "johan lamaire", "geert beckers"), "beheerder natuurpunt",
+                                   ifelse(str_to_lower(waarnemer) == "johan buckens", "johannes buckens", 
+                                   ifelse(str_to_lower(waarnemer) == "valã©rie goethals", "valérie goethals",
                                           ifelse(str_to_lower(waarnemer) == "els", "els vandenbroucke",
-                                                 str_to_lower(waarnemer))))))
+                                                 str_to_lower(waarnemer))))))))))
                                    ) %>%
   filter(!is.na(floroncode)) %>%
   filter(!is.na(locatie)) %>%
@@ -207,8 +212,8 @@ data_waarnemingen_extra <- data_extern_locaties %>%
   select(bron, meetnet, locatie, afstand_tot_locatie, nieuwe_locatie, locatie_np, jaar, datum, invoerdatum, waarnemer, id_wnm = id,  code = floroncode,  aantal, x = x_coord, y = y_coord, opm)
 
 data_waarnemingen_migratie %>%
-  filter(!is.na(visit_id)) %>%
-  write_csv2(file = str_c("../output/controle_plantendata/plantenmeetnetten_migratie_", year_update, ".csv"),  na = "", )
+  #filter(!is.na(visit_id)) %>%
+  write_csv2(file = str_c("../output/controle_plantendata/plantenmeetnetten_migratie_", year_update, ".csv"),  na = "")
 
 write_csv2(data_waarnemingen_extra, 
            file = str_c("../output/controle_plantendata/plantenmeetnetten_extra_", year_update, ".csv"), na = "")
@@ -219,8 +224,7 @@ write_csv2(data_waarnemingen_extra,
 ```{r}
 
 controle_bezoeken <- data_waarnemingen_migratie %>%
-  filter(is.na(visit_id)) %>%
-  distinct(meetnet, locatie, afstand_tot_locatie, datum, invoerdatum, waarnemer_wnm.be, code)
+  filter(is.na(visit_id))
 
 write_csv2(controle_bezoeken, str_c("../output/controle_plantendata/wnm_planten_zonderbezoeken_", year_update, ".csv"))
 ```
@@ -241,6 +245,23 @@ bezoeken_planten_zonderdata <- read_vc("bezoeken", "../raw") %>%
 
 write_csv2(bezoeken_planten_zonderdata, str_c("../output/controle_plantendata/bezoeken_planten_zonderwnm_", year_update, ".csv"))
 ```
+
+```{r, eval = FALSE}
+check_wnm <- planten_update %>%
+  filter(waarnemer == "Yolan Bosteels") %>%
+  st_transform(crs = 4326)
+
+locaties_planten_actief_sf %>%
+  filter(meetnet == "Honingorchis") %>%
+  st_transform(4326) %>%
+  leaflet() %>%
+  addTiles() %>%
+  addPolygons() %>%
+  addCircleMarkers(data = check_wnm)
+  
+```
+
+
 
 ## Alle nieuwe data voor meetnetevaluatie
 
