@@ -171,27 +171,78 @@ write_csv2(locaties_md_vleermuizen, "processed/tellers_militaire_domeinen/teller
 
 locatie_users <- read_vc("raw/locatie_users")
 locatie_users_reserve_orig <- read_vc("raw/locatie_users_reserve")
+# temp solution
+locatie_users_reserve_orig <- read_csv("raw/20260604_locatie_users_reserve.csv")
 users <- read_vc("raw/meetnetten_users")
 medetellers <- read_vc("raw/medetellers")
 
 locatie_users_gereserveerd <- locatie_users %>%
+  filter(locatie != "ES0079_1_2") %>%
   filter(is_active) %>%
-  filter(meetnet !="Algemene Vlindermonitoring") %>%
+  filter(meetnet != "Algemene Vlindermonitoring") %>%
+  filter(!meetnet %in% c("Otter", "Hoogveenglanslibel", "Platte schijfhoorn",
+                         "Vliegend hert - inhaalslag (afgerond)",
+                         "Zeggekorfslak - inhaalslag (afgerond)",
+                         "Vroege glazenmaker")) %>%
   mutate(tekst = str_c(meetnet, ": ", locatie)) %>%
   group_by(first_name, last_name, email) %>%
-  summarise(locaties = str_c(unique(tekst), collapse = "; ")) %>%
+  summarise(
+   locaties = str_c(unique(tekst), collapse = "; ")) %>%
   ungroup() %>%
   mutate(type = "gereserveerd")
 
 locatie_users_reserve <- locatie_users_reserve_orig %>%
   filter(is_active) %>%
   filter(interested) %>%
-  filter(meetnet !="Algemene Vlindermonitoring") %>%
+  filter(meetnet != "Algemene Vlindermonitoring") %>%
+  filter(!meetnet %in% c("Otter", "Hoogveenglanslibel", "Platte schijfhoorn",
+                         "Vliegend hert - inhaalslag (afgerond)",
+                         "Zeggekorfslak - inhaalslag (afgerond)",
+                         "Vroege glazenmaker")) %>%
   mutate(tekst = str_c(meetnet, ": ", locatie)) %>%
   group_by(first_name, last_name, email) %>%
   summarise(locaties = str_c(unique(tekst), collapse = "; ")) %>%
   ungroup() %>%
   mutate(type = "reserve")
+
+locatie_users_incl_reserve <- locatie_users %>%
+  bind_rows(locatie_users_reserve_orig %>%
+              filter(interested)) %>%
+  filter(is_active) %>%
+  filter(meetnet != "Algemene Vlindermonitoring") %>%
+  filter(!meetnet %in% c("Otter", "Hoogveenglanslibel", "Platte schijfhoorn",
+                         "Vliegend hert - inhaalslag (afgerond)",
+                         "Zeggekorfslak - inhaalslag (afgerond)",
+                         "Vroege glazenmaker")) %>%
+  group_by(first_name, last_name, email, meetnet) %>%
+  summarise(locaties = str_c(unique(locatie), collapse = ", ")) %>%
+  ungroup() %>%
+  mutate(meetnet_locaties = str_c(meetnet, ": ", locaties)) %>%
+  group_by(first_name, last_name, email) %>%
+  summarise(locaties = str_c(unique(meetnet_locaties), collapse = "; ")) %>%
+  ungroup()
+
+users_meetnetten <- locatie_users %>%
+  filter(is_active) %>%
+  filter(meetnet != "Algemene Vlindermonitoring") %>%
+  filter(!meetnet %in% c("Otter", "Hoogveenglanslibel", "Platte schijfhoorn",
+                         "Vliegend hert - inhaalslag (afgerond)",
+                         "Zeggekorfslak - inhaalslag (afgerond)",
+                         "Vroege glazenmaker")) %>%
+  bind_rows(
+    locatie_users_reserve <- locatie_users_reserve_orig %>%
+      filter(is_active) %>%
+      filter(interested) %>%
+      filter(meetnet != "Algemene Vlindermonitoring") %>%
+      filter(!meetnet %in% c("Otter", "Hoogveenglanslibel", "Platte schijfhoorn",
+                             "Vliegend hert - inhaalslag (afgerond)",
+                             "Zeggekorfslak - inhaalslag (afgerond)",
+                             "Vroege glazenmaker"))
+    ) %>%
+  group_by(first_name, last_name, email) %>%
+  arrange(meetnet) %>%
+  summarise(meetnet = str_c(unique(meetnet), collapse = "; ")) %>%
+  ungroup()
 
 users_distinct <- users %>%
   distinct(first_name, last_name, adres, postcode, gemeente, email)
@@ -200,11 +251,34 @@ locatie_users_all <- locatie_users_gereserveerd %>%
   bind_rows(locatie_users_reserve) %>%
   spread(key = type, value = locaties) %>%
   left_join(users_distinct, by = c("first_name", "last_name", "email")) %>%
-  select(Voornaam = first_name, Achternaam = last_name, Adres = adres, Postcode = postcode, Gemeente = gemeente, "Locatie gereserveerd" = gereserveerd, "Locatie reserve" = reserve, Email = email)
+  left_join(users_meetnetten, by = c("first_name", "last_name", "email")) %>%
+  select(Voornaam = first_name, Achternaam = last_name, Email = email, Adres = adres, Postcode = postcode, Gemeente = gemeente, Meetnet = "meetnet", "Locatie gereserveerd" = gereserveerd, "Locatie reserve" = reserve) %>%
+  filter(Voornaam != "") %>%
+  filter(Email != "")
 
-write.csv2(locatie_users_all, "processed/overzicht_tellers_versie2024-03-29.csv", row.names = FALSE, na = "")
+write_excel_csv2(locatie_users_all, "processed/overzicht_tellers_versie2026-04-14.csv", na = "", )
 
-bezoeken_per_hoofdteller <- read_vc(file = "bezoeken", root = "raw") %>%
+# geen onderscheid tussen hoofdteller en reserve
+locatie_users_all2 <- locatie_users_incl_reserve %>%
+  left_join(users_distinct, by = c("first_name", "last_name", "email")) %>%
+  select(Voornaam = first_name, Achternaam = last_name, Adres = adres, Postcode = postcode, Plaats = gemeente, Mailadres = email, locaties) %>%
+  filter(Voornaam != "") %>%
+  filter(Mailadres != "")
+
+write_excel_csv2(locatie_users_all2, "processed/meetnettellers_versie2026-06-04.csv", na = "")
+
+versie_0601 <- read_csv2("processed/meetnettellers_versie2026-06-01.csv")
+
+nieuw <- locatie_users_all2 %>%
+  anti_join(versie_0601, by = c("Mailadres", "locaties"))
+
+nieuw_mailadres <- locatie_users_all2 %>%
+  anti_join(versie_0601, by = c("Mailadres"))
+
+bezoeken <- read_vc(file = "bezoeken", root = "raw") %>%
+  filter(meetnet != "Algemene Vlindermonitoring")
+
+bezoeken_per_hoofdteller <- bezoeken %>%
   mutate(teller = hoofdteller,
          teller_type = "hoofdteller") %>%
   group_by(meetnet, teller, teller_type) %>%
@@ -213,7 +287,7 @@ bezoeken_per_hoofdteller <- read_vc(file = "bezoeken", root = "raw") %>%
             jaar_max_telling = max(jaar)) %>%
   ungroup()
 
-bezoeken_per_medeteller <- read_vc(file = "bezoeken", root = "raw") %>%
+bezoeken_per_medeteller <- bezoeken %>%
   select(-hoofdteller) %>%
   left_join(medetellers, by = "visit_id") %>%
   mutate(teller = str_c(first_name, " ", last_name),
@@ -234,6 +308,39 @@ overzicht_bezoeken_users <- users %>%
   select(teller, email, role, soortgroep, meetnet, teller_type, n_tellingen_meetnet, jaar_min_telling, jaar_max_telling)
 
 write_csv2(overzicht_bezoeken_users, "output/overzicht_tellingen_users.csv", na = "")
+
+bezoeken_tellers <- bezoeken %>%
+  mutate(teller = hoofdteller,
+         teller_type = "hoofdteller") %>% 
+  select(soortgroep, meetnet, protocol, locatie, jaar, datum, visit_id, bezoek_status, hoofdteller) %>%
+  left_join(medetellers %>%
+              mutate(medeteller = str_c(first_name, " ", last_name)) %>%
+              select(visit_id, medeteller),
+            by = "visit_id") %>%
+  pivot_longer(cols = c(hoofdteller, medeteller), 
+               names_to = "teller_type", 
+               values_to = "teller_naam") %>%
+  filter(!is.na(teller_naam))
+
+bezoeken_tellers_overzicht <- bezoeken_tellers %>%
+  filter(jaar >= 2016) %>%
+  group_by(jaar) %>%
+  summarise(n_tellers = n_distinct(teller_naam),
+            n_locaties = n_distinct(locatie, meetnet),
+            n_tellingen = n_distinct(visit_id)) %>%
+  ungroup()
+
+write_csv2(bezoeken_tellers_overzicht, "output/overzicht_tellingen_2025.csv", na = "")
+
+bezoeken_tellers_meetnet <- bezoeken_tellers %>%
+  filter(jaar >= 2016) %>%
+  group_by(meetnet, jaar) %>%
+  summarise(n_tellers = n_distinct(teller_naam),
+            n_locaties = n_distinct(locatie, meetnet),
+            n_tellingen = n_distinct(visit_id)) %>%
+  ungroup()
+  
+
 #############################################################################################################
 
 bezoeken_per_jaar <- read_vc(file = "bezoeken", root = "raw") %>%
@@ -283,7 +390,7 @@ write.csv2(visits_libellen, "output/bezoeken_libellen_id_wnm_account.csv", row.n
 ########################################################
 # Rapport afwijking soortenbesluit
 
-year_rapportage <- 2024
+year_rapportage <- 2025
 
 aantallen <- read_vc("raw/aantallen")
 
@@ -296,9 +403,12 @@ aantallen_planten_orig <- read_vc("raw/aantallen_planten")
 beschr_floron_code <- aantallen_planten_orig %>%
   distinct(protocol, code, beschrijving_floroncode)
 
-aantallen_migratie <- read_csv2("output/controle_plantendata/plantenmeetnetten_migratie_2024.csv") %>%
-  left_join(beschr_floron_code, by = c("code", "protocol"))
+namen <- aantallen_planten_orig %>%
+  distinct(meetnet, soort_nl, soort_wet, soortgroep, primaire_soort)
 
+aantallen_migratie <- read_csv2("output/controle_plantendata/plantenmeetnetten_migratie_2025.csv") %>%
+  left_join(beschr_floron_code, by = c("code", "protocol")) %>%
+  left_join(namen, by = "meetnet")
 
 aantallen_planten <- aantallen_planten_orig %>%
   filter(validatie != -1) %>%
@@ -324,7 +434,7 @@ aantallen_planten <- aantallen_planten_orig %>%
 aantallen_rapportageANB <- aantallen %>%
   bind_rows(aantallen_planten) %>%
   filter(levensstadium != "") %>%
-  filter(type_aantal != "max aantal") %>%
+  filter(type_aantal != "max aantal" | is.na(type_aantal)) %>%
   filter(aantal != 999) %>%
   mutate(levensstadium = ifelse(meetnet == "Hazelmuis", "nest", levensstadium)) %>%
   filter(jaar == year_rapportage) %>%
@@ -359,13 +469,14 @@ aantallen_rapportageMD <- aantallen %>%
   bind_rows(aantallen_planten) %>%
   semi_join(locaties_md, by = c("meetnet", "locatie")) %>%
   filter(levensstadium != "") %>%
-  filter(type_aantal != "max aantal") %>%
+  filter(type_aantal != "max aantal" | is.na(type_aantal)) %>%
   filter(aantal != 999) %>%
   mutate(levensstadium = ifelse(meetnet == "Hazelmuis", "nest", levensstadium),
          locatie = ifelse(locatie == "KleinSchietveld", "Klein Schietveld", locatie),
          locatie = ifelse(str_detect(locatie, "Klein Schietveld"), "Klein Schietveld", locatie),
          locatie = ifelse(str_detect(locatie, "Groot Schietveld"), "Groot Schietveld", locatie),
-         locatie = ifelse(str_detect(locatie, "Kamp Beverlo"), "Kamp Beverlo", locatie)) %>%
+         locatie = ifelse(str_detect(locatie, "Kamp Beverlo"), "Kamp Beverlo", locatie),
+         locatie = ifelse(str_detect(locatie, "Tielenkamp"), "Tielenkamp", locatie)) %>%
   filter(jaar == year_rapportage) %>%
   group_by(soortgroep, meetnet, levensstadium, locatie, visit_id, soort_nl, soort_wet, primaire_soort) %>%
   summarise(aantal_bezoek = sum(aantal,na.rm=TRUE)) %>%
@@ -381,7 +492,7 @@ aantallen_rapportageMD <- aantallen %>%
   #filter(primaire_soort) %>%
   select('Militair domein', jaar, soortgroep, 'Nederlandse naam', 'wetenschappelijke naam', doelsoort, aantalGeteldTotaal = aantal_locatie, nBezoeken = n_bezoeken)
 
-write_excel_csv2(aantallen_rapportageANB, "Output/Afwijkingsvergunning_21-202358_rapportage_2025_resultaten_2024_bijlage.csv", na = "")
+write_excel_csv2(aantallen_rapportageANB, "Output/Afwijkingsvergunning_21-202358_rapportage_2026_resultaten_2025_bijlage.csv", na = "")
 write_excel_csv2(aantallen_rapportageMD, "Output/meetnetten_militaire_domeinen_2024.csv", na = "")
 
 ########################################################
@@ -1295,15 +1406,13 @@ hoofdlocaties_zondertransecten %>%
 ##### kamsalamander
 
 counts_kamsalamander <- get_meetnetten_observations(connection = con, 
-                                                  scheme_name = c("Kamsalamander"), 
-                                                  collect = TRUE) %>%
-  filter(target_species) %>%
-  filter(year(start_date) >= 2020)
+                                                    scheme_name = c("Kamsalamander"), 
+                                                    collect = TRUE) %>%
+  filter(target_species)
 
 visits_kamsalamander <- get_meetnetten_visits(connection = con, 
                                               scheme_name = c("Kamsalamander"), 
-                                              collect = TRUE) %>%
-  filter(year(start_date) >= 2020)
+                                              collect = TRUE)
 
 locations_kamsalamander <- get_meetnetten_locations(connection = con, 
                                                     scheme_name = c("Kamsalamander"))
@@ -1338,7 +1447,71 @@ data_kamsalamander <- data_kamsalamander %>%
   select(scheme, protocol, location, is_sample, x, y, start_date, visit_status, fuik_nr, name_nl, scientific_name, sex, life_stage, count, notes)
 
 data_kamsalamander %>%
-  write_csv2("../output/data_meetnet_kamsalamander_2026-01-14.csv")
+  write_csv2("output/data_meetnet_kamsalamander_2026-06-10.csv")
+
+counts_kamsalamander <- get_meetnetten_observations(connection = con, 
+                                                  scheme_name = c("Kamsalamander"), 
+                                                  collect = TRUE) %>%
+  filter(target_species)
+
+visits_kamsalamander <- get_meetnetten_visits(connection = con, 
+                                              scheme_name = c("Kamsalamander"), 
+                                              collect = TRUE)
+
+locations_kamsalamander <- get_meetnetten_locations(connection = con, 
+                                                    scheme_name = c("Kamsalamander"))
+
+ecoregions <- read_ecoregions()
+provincies <- read_admin_areas(dsn = "provinces")
+
+locations_kamsalamander <- locations_kamsalamander$main_locations %>%
+  st_transform(crs = 31370) %>%
+  st_join(provincies %>%
+            select(provincie = name)) %>%
+  st_join(ecoregions %>%
+            select(ecoregio = region_name))
+
+locations_kamsalamander <- locations_kamsalamander %>%
+  st_drop_geometry() %>%
+  mutate(x = st_coordinates(locations_kamsalamander)[,1],
+         y = st_coordinates(locations_kamsalamander)[,2])
+
+data_kamsalamander <- visits_kamsalamander %>%
+  select(scheme, protocol, location, start_date, visit_status, for_analysis, notes, visit_id) %>%
+  left_join(counts_kamsalamander %>%
+              select(visit_id, sample_id, name_nl, scientific_name, sex, life_stage, count),
+            by = "visit_id") %>%
+  left_join(locations_kamsalamander %>%
+              select(location, provincie, ecoregio, is_sample, is_active, x, y),
+            by = "location")
+
+fuik_nrs <- data_kamsalamander %>%
+  filter(protocol == "Amfibieën - Fuiken") %>%
+  distinct(visit_id, sample_id) %>%
+  group_by(visit_id) %>%
+  mutate(fuik_nr = rank(sample_id)) %>%
+  ungroup()
+
+data_kamsalamander <- data_kamsalamander %>%
+  left_join(fuik_nrs, by = c("visit_id", "sample_id")) %>%
+  arrange(start_date, fuik_nr) %>%
+  select(scheme, protocol, location, ecoregio, provincie, is_sample, x, y, start_date, visit_status, fuik_nr, name_nl, scientific_name, sex, life_stage, count, notes)
+
+data_kamsalamander %>%
+  write_csv2("output/data_meetnet_kamsalamander_2026-06-10.csv")
+
+overzicht_kustduinen <- data_kamsalamander %>%
+  filter(ecoregio == "Ecoregio van de kustduinen") %>%
+  mutate(levensstadium = ifelse(str_detect(protocol, "Fuik"), "adulten en juvenielen", "larven")) %>%
+  group_by(scheme, location, x, y, protocol, start_date, visit_status, levensstadium) %>%
+  summarise(count = sum(count),
+            aantal_fuiken = n_distinct(fuik_nr)) %>%
+  ungroup() %>%
+  mutate(aantal_fuiken = ifelse(str_detect(protocol, "Fuik"), aantal_fuiken, NA)) %>%
+  filter(visit_status == "Conform protocol")
+
+overzicht_kustduinen %>%
+  write_csv2("output/meetnet_kamsalamander_kustduinen_2026-03-09.csv")
 
 data_kamsalamander %>%
   st_as_sf(coords = c("x", "y"), crs = 31370) %>%
@@ -1361,7 +1534,6 @@ visits_kamsalamander <- get_meetnetten_visits(connection = con,
 
 locations_kamsalamander <- (get_meetnetten_locations(connection = con, 
                                                     scheme_name = c("Kamsalamander")))$main_locations %>%
-  filter(str_detect(str_to_lower(location), "tommelen")) %>%
   st_transform(crs = 31370)
 
 locations_kamsalamander <- locations_kamsalamander %>%
@@ -1411,3 +1583,231 @@ data_kamsalamander %>%
 
 leefgebied_wide %>%
   write_csv2("output/leefgebied_meetnet_kamsalamander_tommelen_2026-01-26.csv", na = "")
+
+####
+
+gerande_oeverspin <- get_meetnetten_locations(connection = con,
+                                              scheme_name = "Gerande oeverspin")
+gerande_oeverspin <- gerande_oeverspin$main_locations
+
+bezoeken_go <- get_meetnetten_visits(con, scheme_name = "Gerande oeverspin") %>%
+  collect()
+
+te_bezoeken <- gerande_oeverspin %>%
+  st_drop_geometry() %>%
+  anti_join(bezoeken_go, by = "location")
+
+
+###
+
+meetnetkenm <- get_characteristics_smp()
+
+meetnetten_eps <- meetnetkenm %>%
+  filter(type_soort == "EPS")
+
+meetnetten_hr <- meetnetten_eps %>%
+  filter(soortgroep != "vogels")
+
+bezoeken <- read_vc(file = "bezoeken", root = "raw") %>%
+  filter(meetnet != "Algemene Vlindermonitoring")
+medetellers <- read_vc("raw/medetellers")
+
+bezoeken_tellers <- bezoeken %>%
+  mutate(teller = hoofdteller,
+         teller_type = "hoofdteller") %>% 
+  select(soortgroep, meetnet, protocol, locatie, jaar, datum, visit_id, bezoek_status, hoofdteller) %>%
+  left_join(medetellers %>%
+              mutate(medeteller = str_c(first_name, " ", last_name)) %>%
+              select(visit_id, medeteller),
+            by = "visit_id") %>%
+  pivot_longer(cols = c(hoofdteller, medeteller), 
+               names_to = "teller_type", 
+               values_to = "teller_naam") %>%
+  filter(!is.na(teller_naam))
+
+bezoeken_tellers_overzicht <- bezoeken_tellers %>%
+  filter(jaar >= 2016) %>%
+  group_by(jaar) %>%
+  summarise(n_tellers = n_distinct(teller_naam),
+            n_locaties = n_distinct(locatie, meetnet),
+            n_tellingen = n_distinct(visit_id)) %>%
+  ungroup()
+
+tellingen_HR <- bezoeken_tellers %>%
+  filter(meetnet %in% meetnetten_hr$meetnet) %>%
+  filter(jaar >= 2019,
+         jaar <= 2024) %>%
+  summarise(meetnetten = str_c(unique(meetnet), collapse = "; "),
+            tellers = n_distinct(teller_naam),
+            tellingen = n_distinct(visit_id),
+            locaties = n_distinct(locatie, meetnet))
+
+
+###########################################
+
+locaties <- get_locations_smp()
+
+visits <- get_meetnetten_visits(con)
+
+meetnetkenm <- get_characteristics_smp()
+
+md <- read_csv("raw/20260609_intersectsmilitarydomain.csv") 
+
+md <- md %>%
+  select(meetnet = project, locatie = location_name, intersects_military_domain)
+
+meetnetkenm_locaties <- meetnetkenm %>%
+  filter(actief == 1) %>%
+  distinct(meetnet, type_selectie = type) 
+
+locaties_main <- locaties %>%
+  filter(locatie_type == "locatie") %>%
+  filter(is_active) %>%
+  inner_join(meetnetkenm_locaties, by = "meetnet") %>%
+  left_join(md, by = c("meetnet", "locatie")) %>%
+  filter(meetnet_type == "meetnet") %>%
+  mutate(type_selectie = ifelse(type_selectie == "Pilootproject", "Steekproef", type_selectie)) %>%
+  select(soortgroep, meetnet, locatie, type_selectie, type_locatie = type, intersects_military_domain) %>%
+  filter(intersects_military_domain) %>%
+  st_transform(31370) %>%
+  st_buffer(1)
+ 
+visits_md <- visits %>%
+  collect() %>%
+  rename(meetnet = scheme, locatie = location) %>%
+  semi_join(locaties_main, by = c("meetnet", "locatie")) %>%
+  mutate(jaar = year(start_date),
+         protocol = str_remove(protocol, " \\(v1\\)")) %>%
+  group_by(meetnet, locatie) %>%
+  summarise(jaar_telling = str_c(unique(jaar), collapse = "; "),
+            protcol = str_c(unique(protocol), collapse = "; ")) %>%
+  ungroup()
+
+locaties_main <- locaties_main %>%
+  left_join(visits_md, by = c("meetnet", "locatie"))
+
+transecten <- get_transects_smp()
+
+transecten_md <- transecten %>%
+  semi_join(locaties_main %>%
+              st_drop_geometry(),
+            by = c("meetnet", "locatie")) %>%
+  select(meetnet, locatie, sublocatie) %>%
+  st_transform(31370)
+
+locaties_main %>%
+  st_write("output/soortenmeetnetten_md.gpkg", "locaties", delete_dsn = TRUE)
+
+transecten_md %>%
+  st_write("output/soortenmeetnetten_md.gpkg", "transecten")
+
+
+###
+
+locaties <- get_meetnetten_locations(connection = con)
+
+meetnetten_actief <- get_characteristics_smp() %>%
+  filter(actief == 1) %>%
+  filter(!meetnet %in% "Otter") %>%
+  filter(soortgroep != "vleermuizen")
+
+locaties_soorten <- locaties$main_locations %>%
+  filter(!scheme %in% c("Algemene Broedvogelmonitoring (ABV)", "Vleermuizen - Wintertellingen", "Algemene Vlindermonitoring")) %>%
+  filter(is_sample, is_active) %>%
+  filter(scheme %in% c(meetnetten_actief$meetnet)) %>%
+  st_transform(31370)
+
+locaties_soorten_punten <- locaties_soorten %>%
+  filter(st_geometry_type(geom) == "POINT")
+
+percelen_overheid <- 
+
+anb_gebied <- st_read("gis/anb/anb_patrimonium_2021-02.shp")
+
+natuurgebied <- st_read("gis/enr/enr_percelen_2016-02-09.shp") %>%
+  select(reservaat = Reservaat, beheerder = Beheerder)
+
+natuurgebied_aggr <- natuurgebied %>%
+  group_by(reservaat, beheerder) %>%
+  summarise(n_pol = n()) %>%
+  ungroup()
+
+anb_gebied_aggr <- anb_gebied %>%
+  select(domein_id = DomeinID) %>%
+  group_by(domein_id) %>%
+  summarise(n_pol = n()) %>%
+  ungroup() %>%
+  st_transform(31370)
+
+locaties_soorten_punten <- locaties_soorten %>%
+  filter(st_geometry_type(geom) == "POINT") %>%
+  st_buffer(100) %>%
+  st_join(natuurgebied_aggr) %>%
+  st_join(anb_gebied_aggr) %>%
+  st_join(percelen_overheid) %>%
+  mutate(prive = is.na(domein_id) & is.na(reservaat) & is.na(capakey)) %>%
+  st_drop_geometry() %>%
+  distinct(species_group, scheme, location, prive)
+  
+locaties_soorten_pol <- locaties_soorten %>%
+  filter(st_geometry_type(geom) != "POINT") %>%
+  st_buffer(1) %>%
+  mutate(area_pol = round(drop_units(st_area(geom))))
+
+locaties_soorten_pol_enr <- locaties_soorten_pol %>%
+  st_intersection(natuurgebied_aggr) %>%
+  filter(!is.na(reservaat)) %>%
+  mutate(area_pol = round(drop_units(st_area(geom)))) %>%
+  st_drop_geometry() %>%
+  group_by(scheme, location) %>%
+  summarise(area_enr = sum(area_pol)) %>%
+  ungroup()
+
+locaties_soorten_pol_anb <- locaties_soorten_pol %>%
+  st_intersection(anb_gebied_aggr) %>%
+  filter(!is.na(domein_id)) %>%
+  mutate(area_pol = round(drop_units(st_area(geom)))) %>%
+  st_drop_geometry() %>%
+  group_by(scheme, location) %>%
+  summarise(area_anb = sum(area_pol)) %>%
+  ungroup()
+
+locaties_soorten_pol_openbaar <- locaties_soorten_pol %>%
+  st_intersection(percelen_overheid) %>%
+  filter(!is.na(capakey)) %>%
+  mutate(area_pol = round(drop_units(st_area(geom)))) %>%
+  st_drop_geometry() %>%
+  group_by(scheme, location) %>%
+  summarise(area_openbaar = sum(area_pol)) %>%
+  ungroup()
+
+locaties_soorten_pol_prive <- locaties_soorten_pol %>%
+  st_drop_geometry() %>%
+  left_join(locaties_soorten_pol_enr, by = c("scheme", "location")) %>%
+  left_join(locaties_soorten_pol_anb, by = c("scheme", "location")) %>%
+  left_join(locaties_soorten_pol_openbaar, by = c("scheme", "location")) %>%
+  mutate(area_anb = ifelse(is.na(area_anb), 0, area_anb),
+         area_enr = ifelse(is.na(area_enr), 0, area_enr),
+         area_openbaar = ifelse(is.na(area_openbaar), 0, area_openbaar),
+    prop_prive = round((area_pol - area_anb - area_enr) / area_pol * 100),
+    prop_prive2 = round((area_pol - area_openbaar) / area_pol * 100),
+    prive = pmin(prop_prive, prop_prive2) > 85)
+  
+
+locaties_prive <- locaties_soorten_punten %>%
+  bind_rows(locaties_soorten_pol_prive)
+
+overzicht_prive <- locaties_prive %>%
+  group_by(prive) %>%
+  summarise(n = n()) %>%
+  ungroup()
+
+overzicht_soortgroep_prive <- locaties_prive %>%
+  group_by(species_group) %>%
+  mutate(n_locaties = n()) %>%
+  ungroup() %>%
+  group_by(species_group, prive, n_locaties) %>%
+  summarise(n_prive = n()) %>%
+  ungroup() %>%
+  filter(prive) %>%
+  mutate(prop_prive = round(n_prive/n_locaties, 2))

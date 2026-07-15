@@ -1,0 +1,204 @@
+---
+title: "Overzicht vrijwilligers meetnetten.be"
+format: html
+editor: source
+---
+
+```{r}
+#| label: setup 
+#| include: false
+
+library(RPostgreSQL)
+library(tidyverse)
+library(inbodb)
+library(lubridate)
+
+```
+
+```{r}
+con <- connect_inbo_dbase("S0008_00_Meetnetten")
+```
+
+Het doel is om een overzicht te krijgen van combinaties van tellers en meetnetlocaties, als hoofdteller of als reserveteller.
+We willen een update krijgen van nieuwee combinaties ten opzichte van de vorige versie.
+Daarbij willen we onderscheiden of het om een nieuwee teller gaat, of een nieuwee meetnetlocatie waar een bestaande teller heeft geclaimd.
+
+We gebruiken volgende data uit de meetnetten.be databank:
+
++ Een overzicht van de tellers die een locatie geclaimd hebben. Het veld 'update' geeft datum weer van de laatste wijziging aan een locatie. Een wijziging kan zijn dat er een nieuwee teller zich heeft aangemeld, maar het kan ook om een andere wijziging aan een locatie gaan. Via dit veld kunnen we dus potentieel nieuwee hoofdtellers voor een locatie selecteren.
+
+```{r}
+query_locatie_users <- "
+  select PG.name as soortgroep
+, P.Name as meetnet
+, l.name as locatie
+, l.id as loc_id
+, pl.is_sample
+, pl.user_id
+, pl.updated
+, pl.is_active
+, u.first_name
+, u.last_name
+, u.email
+, u.is_staff
+from staging_Meetnetten.projects_projectlocation pl
+inner join staging_Meetnetten.Projects_project P on P.ID = pl.project_ID
+inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+inner join staging_Meetnetten.locations_location l on l.id = pl.location_id
+inner join staging_Meetnetten.accounts_user u on u.id = pl.user_id
+"
+locatie_users <- dbGetQuery(con, query_locatie_users)
+
+query_users <- "
+select pg.name as soortgroep
+  , p.name as meetnet
+  , u.first_name
+  , u.id
+  , u.last_name
+  , u.email
+  , u.address as adres
+  , u.city as gemeente
+  , u.postalcode as postcode
+  , u.reference_obs
+  , pu.role
+  from staging_Meetnetten.projects_projectuser pu
+    inner join staging_Meetnetten.projects_project p on p.id = pu.project_id
+    inner join staging_Meetnetten.accounts_user u on u.id = pu.user_id
+    inner join staging_Meetnetten.projects_projectgroup pg on pg.id = p.group_id"
+
+meetnetten_users <- dbGetQuery(con, query_users)
+```
+
++ De lijst met reservetellers zit nog niet in de datawarehouse. We gebruiken een export uit de productiedatabank. Via het veld 'update' kunnen we Nieuwe_tellere reservetellers t.o.v. de datum van de vorige versie selecteren. Een reserveteller voor een locatie kan mogelijks wel als hoofdteller voor diezelfde locatie in een vorige versie van het overzicht zitten. 
+
+```{r}
+# temp solution
+locatie_users_reserve_orig <- read_csv("../raw/20260714_locatie_users_reserve.csv")
+
+locatie_users_reserve_old <- read_csv("../raw/20260604_locatie_users_reserve.csv")
+```
+
+```{r}
+last_version <- read_csv2("../processed/meetnettellers_versie2026-06-01.csv")
+
+locatie_users_old <- read_vc(root = "../raw", file = "locatie_users")
+
+versie_hoofdteller_old <- as.Date("2026-05-20")
+versie_reserveteller_old <- as.Date("2026-06-05")
+```
+
+Nieuwe reservetellers voor een locatie
+
+```{r}
+
+locatie_users_reserve_new <- locatie_users_reserve_orig %>%
+  mutate(updated = as.Date(updated)) %>%
+  filter(interested) %>%
+  filter(is_active) %>%
+  filter(meetnet != "Algemene Vlindermonitoring") %>%
+  filter(!meetnet %in% c("Otter", "Hoogveenglanslibel", "Platte schijfhoorn",
+                         "Vliegend hert - inhaalslag (afgerond)",
+                         "Zeggekorfslak - inhaalslag (afgerond)",
+                         "Vroege glazenmaker")) %>%
+  filter(updated > versie_reserveteller_old) 
+
+check_bestaand <- locatie_users_reserve_new %>%
+  semi_join(locatie_users_old, by = c("first_name", "last_name",  "locatie", "meetnet")) 
+```
+
+Nieuwe hoofdtellers voor een locatie
+
+```{r}
+locatie_users_new <- locatie_users %>%
+  mutate(updated = as.Date(updated)) %>%
+  anti_join(locatie_users_old, by = c("first_name", "last_name", "meetnet", "locatie")) %>%
+  filter(updated > versie_hoofdteller_old)
+
+check_bestaand <- locatie_users_new %>%
+  semi_join(locatie_users_reserve_old %>%
+              filter(interested),
+            by = c("first_name", "last_name", "meetnet", "locatie"))
+
+locatie_users_new <- locatie_users_new %>%
+  anti_join(locatie_users_reserve_old %>%
+              filter(interested),
+            by = c("first_name", "last_name", "meetnet", "locatie"))
+```
+
+Nieuwe registraties
+
+```{r}
+registrations_new <- locatie_users_reserve_new %>%
+  bind_rows(locatie_users_new) %>%
+  select(Datum_update = updated, Voornaam = first_name, Achternaam = last_name, Mailadres = email, meetnet, locatie) %>%
+  unique() %>%
+  arrange(Datum_update)
+
+tellers_new <- registrations_new %>%
+  anti_join(last_version, by = c("Voornaam", "Achternaam")) %>%
+  distinct(Voornaam, Achternaam) %>%
+  mutate(Nieuwe_teller = "Ja")
+
+registrations_new <- registrations_new %>%
+  left_join(tellers_new, by = c("Voornaam", "Achternaam")) %>%
+  mutate(Nieuwe_teller = ifelse(is.na(Nieuwe_teller), "Nee", Nieuwe_teller))
+```
+
+
+```{r}
+
+users_distinct <- meetnetten_users %>%
+  distinct(first_name, last_name, adres, postcode, gemeente, email)
+
+locatie_users_all <- locatie_users %>%
+  bind_rows(locatie_users_reserve_orig %>%
+              filter(interested)) %>%
+  filter(is_active) %>%
+  filter(meetnet != "Algemene Vlindermonitoring") %>%
+  filter(!meetnet %in% c("Otter", "Hoogveenglanslibel", "Platte schijfhoorn",
+                         "Vliegend hert - inhaalslag (afgerond)",
+                         "Zeggekorfslak - inhaalslag (afgerond)",
+                         "Vroege glazenmaker"))
+
+registrations_all <- locatie_users_all %>%
+  select(Voornaam = first_name, Achternaam = last_name, Mailadres = email, meetnet, locatie, updated) %>%
+  unique() %>%
+  mutate(updated = as.Date(updated)) %>%
+  arrange(Voornaam, Achternaam, meetnet, locatie) %>%
+  filter(Voornaam != "")
+
+overzicht_users_all <- locatie_users_all %>%
+  group_by(first_name, last_name, email, meetnet) %>%
+  summarise(locaties = str_c(unique(locatie), collapse = ", ")) %>%
+  ungroup() %>%
+  mutate(meetnet_locaties = str_c(meetnet, ": ", locaties)) %>%
+  group_by(first_name, last_name, email) %>%
+  summarise(locaties = str_c(unique(meetnet_locaties), collapse = "; ")) %>%
+  ungroup() %>%
+  left_join(users_distinct, by = c("first_name", "last_name", "email")) %>%
+  select(Voornaam = first_name, Achternaam = last_name, Adres = adres, Postcode = postcode, Plaats = gemeente, Mailadres = email, locaties) %>%
+  filter(Voornaam != "") %>%
+  filter(Mailadres != "")
+
+overzicht_users_new <- overzicht_users_all %>%
+  inner_join(registrations_new %>%
+               distinct(Voornaam, Achternaam, Nieuwe_teller),
+             by = c("Voornaam", "Achternaam"))
+
+versie_update <- registrations_all %>%
+  filter(!is.na(updated)) %>%
+  slice_max(order_by = updated, n = 1, with_ties = FALSE)
+```
+
+```{r}
+
+registrations_new %>%
+  write_excel_csv2(str_c("../processed/meetnetten_registraties_update_", as.Date(versie_update$updated), ".csv"))
+
+overzicht_users_new %>%
+  write_excel_csv2(str_c("../processed/meetnetten_tellers_update_", as.Date(versie_update$updated), ".csv"))
+
+registrations_all %>%
+  write_excel_csv2(str_c("../processed/meetnetten_registraties_all_", as.Date(versie_update$updated), ".csv"))
+```
+
