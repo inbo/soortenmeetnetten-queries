@@ -1,6 +1,6 @@
 # Soortenmeetnetten-queries
 
-This repository contains R scripts for data management of the Flemish [Species Monitoring Programme](https://www.meetnetten.be/).
+This repository contains R scripts for data management of the Flemish [Species Monitoring Programme](https://www.meetnetten.be/) (Soortenmeetnetten in Dutch).
 
 Following scripts can be found in the [src](https://github.com/inbo/soortenmeetnetten-queries/tree/master/src) folder:
 
