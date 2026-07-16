@@ -85,24 +85,29 @@ query_locatie_users <- "
   select PG.name as soortgroep
 , P.Name as meetnet
 , l.name as locatie
+, l.id as loc_id
 , pl.is_sample
+, pl.user_id
+, pl.updated
 , pl.is_active
 , u.first_name
 , u.last_name
 , u.email
 , u.is_staff
 from staging_Meetnetten.projects_projectlocation pl
-left outer join staging_Meetnetten.Projects_project P on P.ID = pl.project_ID
-left join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
-left outer join staging_Meetnetten.locations_location l on l.id = pl.location_id
+inner join staging_Meetnetten.Projects_project P on P.ID = pl.project_ID
+inner join staging_Meetnetten.projects_projectgroup PG on PG.id = P.group_id
+inner join staging_Meetnetten.locations_location l on l.id = pl.location_id
 inner join staging_Meetnetten.accounts_user u on u.id = pl.user_id
 "
+
 locatie_users <- dbGetQuery(con, query_locatie_users)
 
 query_users <- "
 select pg.name as soortgroep
   , p.name as meetnet
   , u.first_name
+  , u.id
   , u.last_name
   , u.email
   , u.address as adres
